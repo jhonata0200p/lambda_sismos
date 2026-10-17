@@ -4,13 +4,6 @@ Arquitectura **Lambda** combinada con **Medallion (Bronze, Silver, Gold)** sobre
 
 ---
 
-## 🏛️ Diagrama de Arquitectura
-Los diagramas visuales completos de la arquitectura se encuentran en la carpeta [`docs/img/`](docs/img/):
-* **Diagrama General Lambda + Medallion:** `docs/img/arquitectura_lambda_medallion.jpg`
-* **Diagrama Limpio por Carriles (Streaming vs Batch):** `docs/img/arquitectura_diagrama_limpio.jpg`
-
----
-
 ## 📁 Estructura del Repositorio
 
 ```text
@@ -19,8 +12,7 @@ Proyecto_sismos/
 │   ├── sample_streaming_hora.json     <- Muestra cruda de la API (última hora) para el pipeline Streaming
 │   └── sample_batch_dia.json          <- Muestra cruda de la API (últimas 24 horas) para el pipeline Batch
 ├── docs/
-│   ├── especificacion_tablas_medallion.md <- Especificación exacta de esquemas Silver y Gold
-│   └── img/                           <- Diagramas de arquitectura en alta resolución
+│   └── especificacion_tablas_medallion.md <- Especificación exacta de esquemas Silver y Gold
 ├── infraestructura/
 │   ├── kafka/                         <- Kafka KRaft + Kafka Connect + HTTP Source Connector
 │   ├── spark/                         <- Master y Worker de Apache Spark 3.5.0
