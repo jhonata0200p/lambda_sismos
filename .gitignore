@@ -1,0 +1,25 @@
+# Datos locales de contenedores (NO subir a Git)
+infraestructura/minIO/minio_data/
+infraestructura/airflow/logs/*
+!infraestructura/airflow/logs/.gitkeep
+
+# Python y entornos virtuales
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env.local
+venv/
+.venv/
+env/
+
+# IDEs y SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Checkpoints y temporales de Spark
+.spark-staging/
+metastore_db/
+derby.log

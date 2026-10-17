@@ -1,0 +1,221 @@
+﻿{
+    "type":  "FeatureCollection",
+    "metadata":  {
+                     "generated":  1792269540000,
+                     "url":  "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson",
+                     "title":  "USGS All Earthquakes, Past Hour",
+                     "status":  200,
+                     "api":  "2.7.0",
+                     "count":  5
+                 },
+    "features":  [
+                     {
+                         "type":  "Feature",
+                         "properties":  {
+                                            "mag":  1.5,
+                                            "place":  "26 km ENE of Susitna North, Alaska",
+                                            "time":  1792269089300,
+                                            "updated":  1792269158671,
+                                            "tz":  null,
+                                            "url":  "https://earthquake.usgs.gov/earthquakes/eventpage/aka2026upjkal",
+                                            "detail":  "https://earthquake.usgs.gov/earthquakes/feed/v1.0/detail/aka2026upjkal.geojson",
+                                            "felt":  null,
+                                            "cdi":  null,
+                                            "mmi":  null,
+                                            "alert":  null,
+                                            "status":  "automatic",
+                                            "tsunami":  0,
+                                            "sig":  35,
+                                            "net":  "ak",
+                                            "code":  "a2026upjkal",
+                                            "ids":  ",aka2026upjkal,",
+                                            "sources":  ",ak,",
+                                            "types":  ",origin,phase-data,",
+                                            "nst":  7,
+                                            "dmin":  0.5,
+                                            "rms":  0.2,
+                                            "gap":  175,
+                                            "magType":  "ml",
+                                            "type":  "earthquake",
+                                            "title":  "M 1.5 - 26 km ENE of Susitna North, Alaska"
+                                        },
+                         "geometry":  {
+                                          "type":  "Point",
+                                          "coordinates":  [
+                                                              -149.364,
+                                                              62.214,
+                                                              63.4
+                                                          ]
+                                      },
+                         "id":  "aka2026upjkal"
+                     },
+                     {
+                         "type":  "Feature",
+                         "properties":  {
+                                            "mag":  2.8,
+                                            "place":  "58 km WNW of Happy Valley, Alaska",
+                                            "time":  1792267871204,
+                                            "updated":  1792268812040,
+                                            "tz":  null,
+                                            "url":  "https://earthquake.usgs.gov/earthquakes/eventpage/aka2026upisja",
+                                            "detail":  "https://earthquake.usgs.gov/earthquakes/feed/v1.0/detail/aka2026upisja.geojson",
+                                            "felt":  null,
+                                            "cdi":  null,
+                                            "mmi":  null,
+                                            "alert":  null,
+                                            "status":  "automatic",
+                                            "tsunami":  0,
+                                            "sig":  121,
+                                            "net":  "ak",
+                                            "code":  "a2026upisja",
+                                            "ids":  ",us6000u31v,aka2026upisja,",
+                                            "sources":  ",us,ak,",
+                                            "types":  ",origin,phase-data,",
+                                            "nst":  128,
+                                            "dmin":  0.1,
+                                            "rms":  0.7,
+                                            "gap":  48,
+                                            "magType":  "ml",
+                                            "type":  "earthquake",
+                                            "title":  "M 2.8 - 58 km WNW of Happy Valley, Alaska"
+                                        },
+                         "geometry":  {
+                                          "type":  "Point",
+                                          "coordinates":  [
+                                                              -152.747,
+                                                              60.067,
+                                                              106.6
+                                                          ]
+                                      },
+                         "id":  "aka2026upisja"
+                     },
+                     {
+                         "type":  "Feature",
+                         "properties":  {
+                                            "mag":  1.09,
+                                            "place":  "4 km NNW of Big Bear City, CA",
+                                            "time":  1792267244210,
+                                            "updated":  1792267457830,
+                                            "tz":  null,
+                                            "url":  "https://earthquake.usgs.gov/earthquakes/eventpage/ci41348623",
+                                            "detail":  "https://earthquake.usgs.gov/earthquakes/feed/v1.0/detail/ci41348623.geojson",
+                                            "felt":  null,
+                                            "cdi":  null,
+                                            "mmi":  null,
+                                            "alert":  null,
+                                            "status":  "automatic",
+                                            "tsunami":  0,
+                                            "sig":  18,
+                                            "net":  "ci",
+                                            "code":  "41348623",
+                                            "ids":  ",ci41348623,",
+                                            "sources":  ",ci,",
+                                            "types":  ",nearby-cities,origin,phase-data,",
+                                            "nst":  37,
+                                            "dmin":  0.05863,
+                                            "rms":  0.17,
+                                            "gap":  52,
+                                            "magType":  "ml",
+                                            "type":  "earthquake",
+                                            "title":  "M 1.1 - 4 km NNW of Big Bear City, CA"
+                                        },
+                         "geometry":  {
+                                          "type":  "Point",
+                                          "coordinates":  [
+                                                              -116.864,
+                                                              34.2976666666667,
+                                                              4.42
+                                                          ]
+                                      },
+                         "id":  "ci41348623"
+                     },
+                     {
+                         "type":  "Feature",
+                         "properties":  {
+                                            "mag":  1.23,
+                                            "place":  "3 km SE of The Geysers, CA",
+                                            "time":  1792266519660,
+                                            "updated":  1792268543547,
+                                            "tz":  null,
+                                            "url":  "https://earthquake.usgs.gov/earthquakes/eventpage/nc75451131",
+                                            "detail":  "https://earthquake.usgs.gov/earthquakes/feed/v1.0/detail/nc75451131.geojson",
+                                            "felt":  null,
+                                            "cdi":  null,
+                                            "mmi":  null,
+                                            "alert":  null,
+                                            "status":  "automatic",
+                                            "tsunami":  0,
+                                            "sig":  23,
+                                            "net":  "nc",
+                                            "code":  "75451131",
+                                            "ids":  ",nc75451131,",
+                                            "sources":  ",nc,",
+                                            "types":  ",nearby-cities,origin,phase-data,scitech-link,",
+                                            "nst":  10,
+                                            "dmin":  0.006399,
+                                            "rms":  0.02,
+                                            "gap":  108,
+                                            "magType":  "md",
+                                            "type":  "earthquake",
+                                            "title":  "M 1.2 - 3 km SE of The Geysers, CA"
+                                        },
+                         "geometry":  {
+                                          "type":  "Point",
+                                          "coordinates":  [
+                                                              -122.731330871582,
+                                                              38.7576675415039,
+                                                              1.25999999046326
+                                                          ]
+                                      },
+                         "id":  "nc75451131"
+                     },
+                     {
+                         "type":  "Feature",
+                         "properties":  {
+                                            "mag":  1.4,
+                                            "place":  "11 km ENE of Fox, Alaska",
+                                            "time":  1792266130340,
+                                            "updated":  1792266250060,
+                                            "tz":  null,
+                                            "url":  "https://earthquake.usgs.gov/earthquakes/eventpage/aka2026uphtgp",
+                                            "detail":  "https://earthquake.usgs.gov/earthquakes/feed/v1.0/detail/aka2026uphtgp.geojson",
+                                            "felt":  null,
+                                            "cdi":  null,
+                                            "mmi":  null,
+                                            "alert":  null,
+                                            "status":  "automatic",
+                                            "tsunami":  0,
+                                            "sig":  30,
+                                            "net":  "ak",
+                                            "code":  "a2026uphtgp",
+                                            "ids":  ",aka2026uphtgp,",
+                                            "sources":  ",ak,",
+                                            "types":  ",origin,phase-data,",
+                                            "nst":  20,
+                                            "dmin":  0.1,
+                                            "rms":  0.4,
+                                            "gap":  35,
+                                            "magType":  "ml",
+                                            "type":  "earthquake",
+                                            "title":  "M 1.4 - 11 km ENE of Fox, Alaska"
+                                        },
+                         "geometry":  {
+                                          "type":  "Point",
+                                          "coordinates":  [
+                                                              -147.383,
+                                                              64.983,
+                                                              0.7
+                                                          ]
+                                      },
+                         "id":  "aka2026uphtgp"
+                     }
+                 ],
+    "bbox":  [
+                 -152.747,
+                 34.297666666667,
+                 0.7,
+                 -116.864,
+                 64.983,
+                 106.6
+             ]
+}

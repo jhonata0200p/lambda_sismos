@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_serving
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: sismos_db
+      POSTGRES_USER: postgres_user
+      POSTGRES_PASSWORD: password123
+    volumes:
+      # Persistencia en disco local para no perder los datos al apagar el contenedor
+      - postgres_data:/var/lib/postgresql/data
+      # Ejecuta automáticamente el script DDL con las tablas y la vista unificada al arrancar
+      - ./init-scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - red_compartida
+    restart: always
+
+volumes:
+  postgres_data:
+
+# Conexión a la red global que creamos en el Paso 0
+networks:
+  red_compartida:
+    name: red_bigdata
+    external: true

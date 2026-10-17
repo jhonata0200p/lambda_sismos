@@ -1,0 +1,110 @@
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka_broker
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka_broker:29092,PLAINTEXT_HOST://localhost:9092"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka_broker:29093"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,PLAINTEXT_HOST://0.0.0.0:9092"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - red_compartida
+    restart: always
+
+  # Contenedor de inicialización que garantiza que el topic exista antes de que nadie escriba
+  kafka-init-topic:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka_init_topic
+    networks:
+      - red_compartida
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Esperando que el broker de Kafka este listo..."
+        cub kafka-ready -b kafka_broker:29092 1 30
+        echo "Creando topic sismos_crudos si no existe..."
+        kafka-topics --bootstrap-server kafka_broker:29092 --create --if-not-exists --topic sismos_crudos --partitions 1 --replication-factor 1
+        echo "Topic sismos_crudos listo."
+
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:7.5.0
+    container_name: kafka_connect
+    ports:
+      - "8083:8083"
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: "kafka_broker:29092"
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: "quickstart-connect"
+      CONNECT_CONFIG_STORAGE_TOPIC: "connect-configs"
+      CONNECT_OFFSET_STORAGE_TOPIC: "connect-offsets"
+      CONNECT_STATUS_STORAGE_TOPIC: "connect-status"
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+      CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_REST_ADVERTISED_HOST_NAME: "kafka_connect"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+    volumes:
+      - ./connectors:/connectors
+    command:
+      - bash
+      - -c
+      - |
+        # 1. Instalar plugin oficial
+        mkdir -p /usr/share/confluent-hub-components/kafka-connect-http
+        curl -sL https://github.com/castorm/kafka-connect-http/releases/download/v0.8.11/kafka-connect-http-0.8.11-plugin.tar.gz | tar -xz -C /usr/share/confluent-hub-components/kafka-connect-http --strip-components=1
+        
+        # 2. Registrar el conector automaticamente una vez que el puerto REST responda
+        (
+          echo "Esperando a que Kafka Connect levante el puerto 8083..."
+          while [ $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8083/connectors) -ne 200 ]; do
+            sleep 3
+          done
+          echo "Kafka Connect listo. Registrando conector HTTP USGS..."
+          curl -s -X POST -H "Content-Type: application/json" --data @/connectors/http-source-usgs.json http://localhost:8083/connectors
+          echo "Conector registrado exitosamente de forma automatica."
+        ) &
+        
+        # 3. Arrancar servicio
+        /etc/confluent/docker/run
+    networks:
+      - red_compartida
+    depends_on:
+      - kafka
+      - kafka-init-topic
+    restart: always
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: kafka_ui_kafdrop
+    ports:
+      - "9009:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka_broker:29092"
+    networks:
+      - red_compartida
+    depends_on:
+      - kafka
+    restart: always
+
+networks:
+  red_compartida:
+    name: red_bigdata
+    external: true

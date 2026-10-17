@@ -1,0 +1,37 @@
+services:
+  spark-master:
+    image: apache/spark:3.5.0
+    container_name: spark_master
+    hostname: spark-master
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+    ports:
+      - "8080:8080"   # UI Web del Master
+      - "7077:7077"   # Puerto interno del Cluster
+    volumes:
+      - ./apps:/opt/spark/apps
+    networks:
+      - red_compartida
+    restart: always
+
+  spark-worker:
+    image: apache/spark:3.5.0
+    container_name: spark_worker_1
+    hostname: spark-worker-1
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+    environment:
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+    ports:
+      - "8081:8081"   # UI Web del Worker
+    volumes:
+      - ./apps:/opt/spark/apps
+    networks:
+      - red_compartida
+    depends_on:
+      - spark-master
+    restart: always
+
+networks:
+  red_compartida:
+    name: red_bigdata
+    external: true

@@ -1,0 +1,356 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# o más acuerdos de licencia de contribución. Consulta el archivo NOTICE
+# distribuido con este trabajo para obtener información adicional
+# sobre la titularidad de los derechos de autor. La ASF licencia este archivo
+# bajo la Licencia Apache, versión 2.0 (la
+# «Licencia»); no puedes usar este archivo salvo en cumplimiento
+# de la Licencia. Puedes obtener una copia de la Licencia en
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Salvo que lo exija la ley aplicable o se acuerde por escrito,
+# el software distribuido bajo la Licencia se distribuye «TAL CUAL»,
+# SIN GARANTÍAS NI CONDICIONES DE NINGÚN TIPO,
+# ya sean expresas o implícitas. Consulta la Licencia para conocer
+# el lenguaje específico que rige los permisos y las limitaciones
+# bajo la Licencia.
+#
+
+# Configuración básica de un clúster de Airflow con CeleryExecutor, Redis y PostgreSQL.
+#
+# ADVERTENCIA: Esta configuración es para desarrollo local. No la uses en un entorno de producción.
+#
+# Esta configuración admite ajustes básicos mediante variables de entorno o un archivo .env
+# Se admiten las siguientes variables:
+#
+# AIRFLOW_IMAGE_NAME           - Nombre de la imagen de Docker usada para ejecutar Airflow.
+#                                Valor predeterminado: apache/airflow:3.3.2
+# AIRFLOW_UID                  - ID de usuario en los contenedores de Airflow
+#                                Valor predeterminado: 50000
+# AIRFLOW_PROJ_DIR             - Ruta base donde se montarán todos los archivos.
+#                                Valor predeterminado: .
+# Estos ajustes son útiles principalmente para probar o ejecutar Airflow de forma independiente.
+#
+# _AIRFLOW_WWW_USER_USERNAME   - Nombre de usuario de la cuenta de administrador (si se solicita).
+#                                Valor predeterminado: airflow
+# _AIRFLOW_WWW_USER_PASSWORD   - Contraseña de la cuenta de administrador (si se solicita).
+#                                Valor predeterminado: airflow
+# _PIP_ADDITIONAL_REQUIREMENTS - Requisitos adicionales de PIP que se instalarán al iniciar los contenedores.
+#                                Usa esta opción SOLO para comprobaciones rápidas. La instalación de requisitos al
+#                                iniciar el contenedor se realiza CADA VEZ que se inicia el servicio.
+#                                Es mejor crear una imagen personalizada o ampliar la imagen oficial,
+#                                tal como se describe en https://airflow.apache.org/docs/docker-stack/build.html.
+#                                Valor predeterminado: ''
+#
+# Puedes modificar este archivo según tus necesidades.
+---
+x-airflow-common: &airflow-common
+  # Para agregar dependencias personalizadas o actualizar distribuciones de proveedores, puedes usar una imagen extendida.
+  # Comenta la línea image, coloca tu Dockerfile en el directorio donde está docker-compose.yaml
+  # y descomenta la línea «build» de abajo. Luego ejecuta `docker-compose build` para crear las imágenes.
+  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.3.2}
+  # build: .
+  env_file:
+    - ${ENV_FILE_PATH:-.env}
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    AIRFLOW__CORE__FERNET_KEY: ${FERNET_KEY}
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: "http://airflow-apiserver:8080/execution/"
+    AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW__API_AUTH__JWT_SECRET:-airflow_jwt_secret}
+    AIRFLOW__API_AUTH__JWT_ISSUER: ${AIRFLOW__API_AUTH__JWT_ISSUER:-airflow}
+    # yamllint: desactivar la regla de longitud de línea
+    # Usa un servidor HTTP sencillo en el planificador para las comprobaciones de estado.
+    # Consulta https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
+    # yamllint: activar la regla de longitud de línea
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    # ADVERTENCIA: Usa la opción _PIP_ADDITIONAL_REQUIREMENTS SOLO para comprobaciones rápidas.
+    # Para otros usos (desarrollo, pruebas y, especialmente, producción), crea o amplía la imagen de Airflow.
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    # The following line can be used to set a custom config file, stored in the local config folder
+    AIRFLOW_CONFIG: "/opt/airflow/config/airflow.cfg"
+  volumes:
+    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
+    - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
+    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
+    - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on: &airflow-common-depends-on
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+
+  redis:
+    # Redis is limited to 7.2-bookworm due to licencing change
+    # https://redis.io/blog/redis-adopts-dual-source-available-licensing/
+    image: redis:7.2-bookworm
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 30s
+      retries: 50
+      start_period: 30s
+    restart: always
+
+  airflow-apiserver:
+    <<: *airflow-common
+    command: api-server
+    ports:
+      - "8085:8080"
+    healthcheck:
+      test:
+        ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/monitor/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-worker:
+    <<: *airflow-common
+    command: celery worker
+    healthcheck:
+      # yamllint: desactivar la regla de longitud de línea
+      test:
+        [
+          "CMD-SHELL",
+          'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    environment:
+      <<: *airflow-common-env
+      # Necesario para gestionar correctamente el apagado gradual de los trabajadores de Celery.
+      # Consulta https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
+      DUMB_INIT_SETSID: "0"
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-apiserver:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    # yamllint: desactivar la regla de longitud de línea
+    command:
+      - -c
+      - |
+        if [[ -z "${AIRFLOW_UID}" ]]; then
+          echo
+          echo -e "\033[1;33m¡ADVERTENCIA!: AIRFLOW_UID no está configurado.\e[0m"
+          echo "Si usas Linux, DEBERÍAS seguir las instrucciones siguientes para configurar "
+          echo "la variable de entorno AIRFLOW_UID; de lo contrario, los archivos pertenecerán a root."
+          echo "For other operating systems you can get rid of the warning with manually created .env file:"
+          echo "    See: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#setting-the-right-airflow-user"
+          echo
+          export AIRFLOW_UID=$$(id -u)
+        fi
+        one_meg=1048576
+        mem_available=$$(($$(getconf _PHYS_PAGES) * $$(getconf PAGE_SIZE) / one_meg))
+        cpus_available=$$(grep -cE 'cpu[0-9]+' /proc/stat)
+        disk_available=$$(df / | tail -1 | awk '{print $$4}')
+        warning_resources="false"
+        if (( mem_available < 4000 )) ; then
+          echo
+          echo -e "\033[1;33m¡ADVERTENCIA!: No hay suficiente memoria disponible para Docker.\e[0m"
+          echo "Se requieren al menos 4 GB de memoria. Tienes $$(numfmt --to iec $$((mem_available * one_meg)))"
+          echo
+          warning_resources="true"
+        fi
+        if (( cpus_available < 2 )); then
+          echo
+          echo -e "\033[1;33m¡ADVERTENCIA!: No hay suficientes CPU disponibles para Docker.\e[0m"
+          echo "Se recomiendan al menos 2 CPU. Tienes $${cpus_available}"
+          echo
+          warning_resources="true"
+        fi
+        if (( disk_available < one_meg * 10 )); then
+          echo
+          echo -e "\033[1;33m¡ADVERTENCIA!: No hay suficiente espacio en disco para Docker.\e[0m"
+          echo "Se recomiendan al menos 10 GB de espacio en disco. Tienes $$(numfmt --to iec $$((disk_available * 1024 )))"
+          echo
+          warning_resources="true"
+        fi
+        if [[ $${warning_resources} == "true" ]]; then
+          echo
+          echo -e "\033[1;33m¡ADVERTENCIA!: No tienes suficientes recursos para ejecutar Airflow (consulta lo anterior).\e[0m"
+          echo "Sigue las instrucciones para aumentar los recursos disponibles:"
+          echo "   https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#before-you-begin"
+          echo
+        fi
+        echo
+        echo "Creando los directorios de /opt que falten:"
+        echo
+        mkdir -v -p /opt/airflow/{logs,dags,plugins,config}
+        echo
+        echo "Versión de Airflow:"
+        /entrypoint airflow version
+        echo
+        echo "Archivos en los volúmenes compartidos:"
+        echo
+        ls -la /opt/airflow/{logs,dags,plugins,config}
+        echo
+        echo "Ejecutando airflow config list para crear el archivo de configuración predeterminado si falta."
+        echo
+        /entrypoint airflow config list >/dev/null
+        echo
+        echo "Archivos en los volúmenes compartidos:"
+        echo
+        ls -la /opt/airflow/{logs,dags,plugins,config}
+        echo
+        echo "Cambiando el propietario de los archivos de /opt/airflow a ${AIRFLOW_UID:-50000}:0"
+        echo
+        chown -R "${AIRFLOW_UID:-50000}:0" /opt/airflow/
+        echo
+        echo "Cambiando el propietario de los archivos de los volúmenes compartidos a ${AIRFLOW_UID:-50000}:0"
+        echo
+        chown -v -R "${AIRFLOW_UID:-50000}:0" /opt/airflow/{logs,dags,plugins,config}
+        echo
+        echo "Archivos en los volúmenes compartidos:"
+        echo
+        ls -la /opt/airflow/{logs,dags,plugins,config}
+
+    # yamllint: activar la regla de longitud de línea
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      _PIP_ADDITIONAL_REQUIREMENTS: ""
+    user: "0:0"
+
+  airflow-cli:
+    <<: *airflow-common
+    profiles:
+      - debug
+    environment:
+      <<: *airflow-common-env
+      CONNECTION_CHECK_MAX_COUNT: "0"
+    # Workaround for entrypoint issue. See: https://github.com/apache/airflow/issues/16252
+    command:
+      - bash
+      - -c
+      - airflow
+    depends_on:
+      <<: *airflow-common-depends-on
+
+  # You can enable flower by adding "--profile flower" option e.g. docker-compose --profile flower up
+  # or by explicitly targeted on the command line e.g. docker-compose up flower.
+  # See: https://docs.docker.com/compose/profiles/
+  flower:
+    <<: *airflow-common
+    command: celery flower
+    profiles:
+      - flower
+    ports:
+      - "5555:5555"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-db-volume:
+
+networks:
+  default:
+    name: red_bigdata
+    external: true

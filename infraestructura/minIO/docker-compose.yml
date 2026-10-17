@@ -1,0 +1,41 @@
+services:
+  minio:
+    image: quay.io/minio/aistor/minio:RELEASE.2026-09-19T17-05-25Z
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_LICENSE: /mnt/license/minio.license
+    volumes:
+      - ./minio_data:/mnt/data
+      - ./minio.license:/mnt/license/minio.license:ro
+    command: server /mnt/data --console-address ":9001"
+    networks:
+      - red_compartida
+    restart: always
+
+  minio-init-buckets:
+    image: quay.io/minio/aistor/mc:latest
+    container_name: minio_auto_buckets
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Esperando que MinIO este listo...' &&
+      sleep 5 &&
+      mc alias set local http://minio:9000 minioadmin minioadmin &&
+      mc mb --ignore-existing local/bronze &&
+      mc mb --ignore-existing local/silver &&
+      mc mb --ignore-existing local/gold &&
+      echo 'Buckets bronze, silver y gold creados exitosamente.'
+      "
+    networks:
+      - red_compartida
+
+networks:
+  red_compartida:
+    name: red_bigdata
+    external: true
