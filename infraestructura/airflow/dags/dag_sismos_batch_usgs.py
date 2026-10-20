@@ -36,12 +36,12 @@ except ImportError:
 USGS_API_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"
 
 # Endpoint primario central (IP de red compartida) y fallback local
-REMOTE_MINIO_ENDPOINT = "http://10.175.132.244:9000"
+REMOTE_MINIO_ENDPOINT = "http://10.175.132.248:9000"
 LOCAL_MINIO_ENDPOINT = "http://minio:9000"
 
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", REMOTE_MINIO_ENDPOINT)
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "en108sgUBD48iFaDZu90")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "yHV7uQJWapCqWrw7XUGMANpmdV8KQHDKTccQcmCy")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "n3jTFho71P8FV8jPHhQC")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "vX4t11jbqRLXRkoTtkW3i6qVvWGvKY9E21tRvm54")
 MINIO_BUCKET = "bronze"
 
 LOCAL_TEMP_DIR = "/tmp/usgs_batch"
@@ -120,12 +120,14 @@ def guardar_en_minio_bronze(**context):
 
     # Endpoints a probar: primero el central del equipo, luego el local
     endpoints_a_probar = []
-    for ep in [MINIO_ENDPOINT, REMOTE_MINIO_ENDPOINT, LOCAL_MINIO_ENDPOINT]:
+    for ep in [MINIO_ENDPOINT, REMOTE_MINIO_ENDPOINT, "http://10.175.132.244:9000", LOCAL_MINIO_ENDPOINT]:
         if ep and ep not in endpoints_a_probar:
             endpoints_a_probar.append(ep)
 
     credenciales_a_probar = [
-        (MINIO_ACCESS_KEY, MINIO_SECRET_KEY, "Service Account Key"),
+        (MINIO_ACCESS_KEY, MINIO_SECRET_KEY, "Nueva Key MinIO 10.175.132.248 (n3jTFh...)"),
+        ("s65H8jUMyaDoZgPmdkWV", "RdyxisbfivojcjOySPV8d5tX1A3lilPUrXXsEg23", "Key de Servicio (s65H8j...)"),
+        ("en108sgUBD48iFaDZu90", "yHV7uQJWapCqWrw7XUGMANpmdV8KQHDKTccQcmCy", "Key de Servicio (en108s...)"),
         ("minioadmin", "minioadmin", "Root Admin Key")
     ]
 
@@ -214,6 +216,7 @@ def notificar_trigger_kevin(**context):
 
 # -------------------------------------------------------------------------
 # Zona horaria local (Colombia / Perú / Ecuador: UTC-5)
+# -------------------------------------------------------------------------
 local_tz = pendulum.timezone("America/Bogota")
 
 # Definición del DAG
