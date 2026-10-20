@@ -1,3 +1,4 @@
+import os
 import json
 import psycopg2
 from psycopg2.extras import execute_batch
@@ -12,20 +13,41 @@ from pyspark.sql.types import (
     LongType, IntegerType, ArrayType
 )
 
-# 1. Sesión de Spark
+# ---------------------------------------------------------
+# 0. Parámetros de Conexión Distribuida (IPs fijas del equipo)
+# ---------------------------------------------------------
+# Kafka del compañero (10.175.132.244)
+KAFKA_BOOTSTRAP_SERVERS = "10.175.132.244:9092"
+KAFKA_TOPIC = "sismos_crudos"
+
+# MinIO Data Lake del compañero (10.175.132.248)
+MINIO_ENDPOINT = "http://10.175.132.248:9000"
+MINIO_ACCESS_KEY = "minioadmin"
+MINIO_SECRET_KEY = "minioadmin"
+
+# PostgreSQL Serving DB del compañero (10.175.132.248)
+PG_HOST = "10.175.132.248"
+PG_PORT = 5432
+PG_DB = "sismos_db"
+PG_USER = "postgres_user"
+PG_PASSWORD = "password123"
+# ---------------------------------------------------------
+# 1. Sesión de Spark con soporte S3A (MinIO remoto)
+# ---------------------------------------------------------
 spark = SparkSession.builder \
     .appName("SparkStreamingUSGS") \
-    .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
-    .config("spark.hadoop.fs.s3a.access.key", "minioadmin") \
-    .config("spark.hadoop.fs.s3a.secret.key", "minioadmin") \
+    .config("spark.hadoop.fs.s3a.endpoint", MINIO_ENDPOINT) \
+    .config("spark.hadoop.fs.s3a.access.key", MINIO_ACCESS_KEY) \
+    .config("spark.hadoop.fs.s3a.secret.key", MINIO_SECRET_KEY) \
     .config("spark.hadoop.fs.s3a.path.style.access", "true") \
     .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
     .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
     .getOrCreate()
 
 spark.sparkContext.setLogLevel("WARN")
-
-# 2. Esquema para datos de USGS
+# ---------------------------------------------------------
+# 2. Esquema individual de cada Feature (lo que envía tu compañero)
+# ---------------------------------------------------------
 schema_properties = StructType([
     StructField("mag", DoubleType(), True),
     StructField("place", StringType(), True),
@@ -38,29 +60,29 @@ schema_geometry = StructType([
     StructField("coordinates", ArrayType(DoubleType()), True)
 ])
 
-schema_feature = StructType([
+schema_single_feature = StructType([
     StructField("id", StringType(), True),
     StructField("properties", schema_properties, True),
     StructField("geometry", schema_geometry, True)
 ])
 
-schema_usgs = StructType([
-    StructField("features", ArrayType(schema_feature), True)
-])
-
-# 3. Flujo desde Kafka
+# ---------------------------------------------------------
+# 3. Lectura continua desde Kafka (desde el inicio: earliest)
+# ---------------------------------------------------------
 df_raw = spark.readStream \
     .format("kafka") \
-    .option("kafka.bootstrap.servers", "kafka_broker:29092") \
-    .option("subscribe", "sismos_crudos") \
+    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
+    .option("subscribe", KAFKA_TOPIC) \
     .option("startingOffsets", "earliest") \
     .load()
 
-# 4. Transformación de capa Silver
-df_parsed = df_raw.select(from_json(col("value").cast("string"), schema_usgs).alias("data"))
-df_exploded = df_parsed.select(explode(col("data.features")).alias("feature"))
+# ---------------------------------------------------------
+# 4. Estructuración Silver y Deduplicación
+# ---------------------------------------------------------
+# Ya no hacemos explode() porque el mensaje es el objeto directo
+df_parsed = df_raw.select(from_json(col("value").cast("string"), schema_single_feature).alias("feature"))
 
-df_silver = df_exploded.select(
+df_silver = df_parsed.select(
     col("feature.id").alias("id_sismo"),
     to_date(from_unixtime(col("feature.properties.time") / 1000)).alias("fecha_evento"),
     from_unixtime(col("feature.properties.time") / 1000).cast("timestamp").alias("timestamp_evento"),
@@ -72,21 +94,28 @@ df_silver = df_exploded.select(
     col("feature.properties.tsunami").alias("alerta_tsunami")
 ).filter(col("id_sismo").isNotNull())
 
-# 5. Procesamiento por Micro-lote
+# ---------------------------------------------------------
+# 5. Función de procesamiento por micro-lote
+# ---------------------------------------------------------
 def procesar_microbatch(batch_df, batch_id):
     if batch_df.rdd.isEmpty():
         return
 
-    batch_df.persist()
+    # DEDUPLICACIÓN: Evita procesar sismos duplicados dentro del micro-lote
+    batch_df_unique = batch_df.dropDuplicates(["id_sismo"])
+    batch_df_unique.persist()
 
-    # --- ESCRITURA EN MINIO (SILVER) ---
-    batch_df.write \
-        .mode("append") \
-        .partitionBy("fecha_evento") \
-        .parquet("s3a://silver/streaming/")
+    # --- A. ESCRITURA EN MINIO REMOTO (SILVER) ---
+    try:
+        batch_df_unique.write \
+            .mode("append") \
+            .partitionBy("fecha_evento") \
+            .parquet("s3a://silver/streaming/fact_sismos/")
+    except Exception as e:
+        print(f"Error escribiendo Silver en MinIO: {e}")
 
-    # --- AGREGACIÓN 1: Resumen Diario ---
-    df_resumen = batch_df.withColumn(
+    # --- B. AGREGACIÓN 1: Resumen Diario (Gold) ---
+    df_resumen = batch_df_unique.withColumn(
         "pais_estado",
         when(
             col("lugar").contains(","),
@@ -101,19 +130,26 @@ def procesar_microbatch(batch_df, batch_id):
         spark_sum(when(col("magnitud") >= 5.0, 1).otherwise(0)).alias("sismos_peligrosos_m5")
     )
 
-    df_resumen.write \
-        .mode("append") \
-        .parquet("s3a://gold/streaming/resumen_diario/")
+    try:
+        df_resumen.write \
+            .mode("append") \
+            .partitionBy("fecha_evento") \
+            .parquet("s3a://gold/streaming/resumen_diario_pais/")
+    except Exception as e:
+        print(f"Error escribiendo Gold Resumen en MinIO: {e}")
 
+    # --- C. ESCRITURA EN POSTGRESQL REMOTO (gold_resumen_streaming) ---
     rows_resumen = df_resumen.collect()
     if rows_resumen:
+        conn = None
+        cur = None
         try:
             conn = psycopg2.connect(
-                host="10.175.132.244",
-                port=5432,
-                database="sismos_db",
-                user="postgres_user",
-                password="password123"
+                host=PG_HOST,
+                port=PG_PORT,
+                database=PG_DB,
+                user=PG_USER,
+                password=PG_PASSWORD
             )
             cur = conn.cursor()
             query_resumen = """
@@ -124,10 +160,16 @@ def procesar_microbatch(batch_df, batch_id):
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 ON CONFLICT (fecha_evento, pais_estado) DO UPDATE SET
+                    magnitud_promedio = (
+                        (gold_resumen_streaming.magnitud_promedio * gold_resumen_streaming.total_sismos) + 
+                        (EXCLUDED.magnitud_promedio * EXCLUDED.total_sismos)
+                    ) / (gold_resumen_streaming.total_sismos + EXCLUDED.total_sismos),
+                    profundidad_promedio_km = (
+                        (gold_resumen_streaming.profundidad_promedio_km * gold_resumen_streaming.total_sismos) + 
+                        (EXCLUDED.profundidad_promedio_km * EXCLUDED.total_sismos)
+                    ) / (gold_resumen_streaming.total_sismos + EXCLUDED.total_sismos),
                     total_sismos = gold_resumen_streaming.total_sismos + EXCLUDED.total_sismos,
                     magnitud_maxima = GREATEST(gold_resumen_streaming.magnitud_maxima, EXCLUDED.magnitud_maxima),
-                    magnitud_promedio = (gold_resumen_streaming.magnitud_promedio + EXCLUDED.magnitud_promedio) / 2,
-                    profundidad_promedio_km = (gold_resumen_streaming.profundidad_promedio_km + EXCLUDED.profundidad_promedio_km) / 2,
                     total_alertas_tsunami = gold_resumen_streaming.total_alertas_tsunami + EXCLUDED.total_alertas_tsunami,
                     sismos_peligrosos_m5 = gold_resumen_streaming.sismos_peligrosos_m5 + EXCLUDED.sismos_peligrosos_m5,
                     ultima_actualizacion_utc = CURRENT_TIMESTAMP;
@@ -147,40 +189,49 @@ def procesar_microbatch(batch_df, batch_id):
             ]
             execute_batch(cur, query_resumen, data_resumen)
             conn.commit()
-            cur.close()
-            conn.close()
         except Exception as e:
             print(f"Error escribiendo gold_resumen_streaming: {e}")
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
 
-    # --- AGREGACIÓN 2: Zonas Críticas ---
-    df_zonas = batch_df.withColumn("cuadricula_lat", spark_round(col("latitud"), 1)) \
-                       .withColumn("cuadricula_lon", spark_round(col("longitud"), 1)) \
-                       .groupBy("cuadricula_lat", "cuadricula_lon").agg(
-                           spark_max("lugar").alias("zona_referencia"),
-                           count("id_sismo").alias("total_sismos_registrados"),
-                           spark_sum(when(col("magnitud") >= 5.0, 1).otherwise(0)).alias("sismos_graves_m5"),
-                           spark_max("magnitud").alias("magnitud_maxima"),
-                           avg("profundidad_km").alias("profundidad_promedio_km"),
-                           spark_min("timestamp_evento").alias("fecha_primer_sismo"),
-                           spark_max("timestamp_evento").alias("fecha_ultimo_sismo"),
-                           when(spark_max("magnitud") >= 6.0, "ALTA")
-                           .when(spark_max("magnitud") >= 4.5, "MEDIA")
-                           .otherwise("BAJA").alias("nivel_alerta")
-                       )
+    # --- D. AGREGACIÓN 2: Zonas Críticas (Gold) ---
+    df_zonas = batch_df_unique.withColumn("cuadricula_lat", spark_round(col("latitud"), 1)) \
+                              .withColumn("cuadricula_lon", spark_round(col("longitud"), 1)) \
+                              .groupBy("cuadricula_lat", "cuadricula_lon").agg(
+                                  spark_max("lugar").alias("zona_referencia"),
+                                  count("id_sismo").alias("total_sismos_registrados"),
+                                  spark_sum(when(col("magnitud") >= 5.0, 1).otherwise(0)).alias("sismos_graves_m5"),
+                                  spark_max("magnitud").alias("magnitud_maxima"),
+                                  avg("profundidad_km").alias("profundidad_promedio_km"),
+                                  spark_min("timestamp_evento").alias("fecha_primer_sismo"),
+                                  spark_max("timestamp_evento").alias("fecha_ultimo_sismo"),
+                                  when(spark_max("magnitud") >= 6.0, "ALTA")
+                                  .when(spark_max("magnitud") >= 4.5, "MEDIA")
+                                  .otherwise("BAJA").alias("nivel_alerta")
+                              )
 
-    df_zonas.write \
-        .mode("append") \
-        .parquet("s3a://gold/streaming/zonas_criticas/")
+    try:
+        df_zonas.write \
+            .mode("append") \
+            .parquet("s3a://gold/streaming/zonas_criticas_frecuentes/")
+    except Exception as e:
+        print(f"Error escribiendo Gold Zonas en MinIO: {e}")
 
+    # --- E. ESCRITURA EN POSTGRESQL REMOTO (gold_zonas_streaming) ---
     rows_zonas = df_zonas.collect()
     if rows_zonas:
+        conn = None
+        cur = None
         try:
             conn = psycopg2.connect(
-                host="10.175.132.244",
-                port=5432,
-                database="sismos_db",
-                user="postgres_user",
-                password="password123"
+                host=PG_HOST,
+                port=PG_PORT,
+                database=PG_DB,
+                user=PG_USER,
+                password=PG_PASSWORD
             )
             cur = conn.cursor()
             query_zonas = """
@@ -192,11 +243,18 @@ def procesar_microbatch(batch_df, batch_id):
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (cuadricula_lat, cuadricula_lon) DO UPDATE SET
                     zona_referencia = EXCLUDED.zona_referencia,
+                    profundidad_promedio_km = (
+                        (gold_zonas_streaming.profundidad_promedio_km * gold_zonas_streaming.total_sismos_registrados) + 
+                        (EXCLUDED.profundidad_promedio_km * EXCLUDED.total_sismos_registrados)
+                    ) / (gold_zonas_streaming.total_sismos_registrados + EXCLUDED.total_sismos_registrados),
                     total_sismos_registrados = gold_zonas_streaming.total_sismos_registrados + EXCLUDED.total_sismos_registrados,
                     sismos_graves_m5 = gold_zonas_streaming.sismos_graves_m5 + EXCLUDED.sismos_graves_m5,
                     magnitud_maxima = GREATEST(gold_zonas_streaming.magnitud_maxima, EXCLUDED.magnitud_maxima),
-                    profundidad_promedio_km = (gold_zonas_streaming.profundidad_promedio_km + EXCLUDED.profundidad_promedio_km) / 2,
-                    nivel_alerta = EXCLUDED.nivel_alerta,
+                    nivel_alerta = CASE 
+                        WHEN GREATEST(gold_zonas_streaming.magnitud_maxima, EXCLUDED.magnitud_maxima) >= 6.0 THEN 'ALTA'
+                        WHEN GREATEST(gold_zonas_streaming.magnitud_maxima, EXCLUDED.magnitud_maxima) >= 4.5 THEN 'MEDIA'
+                        ELSE 'BAJA'
+                    END,
                     fecha_primer_sismo = LEAST(gold_zonas_streaming.fecha_primer_sismo, EXCLUDED.fecha_primer_sismo),
                     fecha_ultimo_sismo = GREATEST(gold_zonas_streaming.fecha_ultimo_sismo, EXCLUDED.fecha_ultimo_sismo);
             """
@@ -217,14 +275,19 @@ def procesar_microbatch(batch_df, batch_id):
             ]
             execute_batch(cur, query_zonas, data_zonas)
             conn.commit()
-            cur.close()
-            conn.close()
         except Exception as e:
             print(f"Error escribiendo gold_zonas_streaming: {e}")
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
 
-    batch_df.unpersist()
+    batch_df_unique.unpersist()
 
-# 6. Inicio de la consulta de Streaming
+# ---------------------------------------------------------
+# 6. Lanzamiento del Streaming continuo
+# ---------------------------------------------------------
 query = df_silver.writeStream \
     .foreachBatch(procesar_microbatch) \
     .option("checkpointLocation", "/tmp/spark_checkpoints/streaming_pipeline") \
