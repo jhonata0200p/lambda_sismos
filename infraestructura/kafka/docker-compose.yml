@@ -7,7 +7,7 @@ services:
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
-      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka_broker:29092,PLAINTEXT_HOST://localhost:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka_broker:29092,PLAINTEXT_HOST://${HOST_IP:-localhost}:9092"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
@@ -67,19 +67,22 @@ services:
       - bash
       - -c
       - |
-        # 1. Instalar plugin oficial
+        # 1. Instalar plugins: HTTP Source y S3 Sink
         mkdir -p /usr/share/confluent-hub-components/kafka-connect-http
         curl -sL https://github.com/castorm/kafka-connect-http/releases/download/v0.8.11/kafka-connect-http-0.8.11-plugin.tar.gz | tar -xz -C /usr/share/confluent-hub-components/kafka-connect-http --strip-components=1
+        confluent-hub install --no-prompt confluentinc/kafka-connect-s3:10.5.6
         
-        # 2. Registrar el conector automaticamente una vez que el puerto REST responda
+        # 2. Registrar los conectores automaticamente una vez que el puerto REST responda
         (
           echo "Esperando a que Kafka Connect levante el puerto 8083..."
           while [ $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8083/connectors) -ne 200 ]; do
             sleep 3
           done
-          echo "Kafka Connect listo. Registrando conector HTTP USGS..."
+          echo "Kafka Connect listo. Registrando conectores..."
           curl -s -X POST -H "Content-Type: application/json" --data @/connectors/http-source-usgs.json http://localhost:8083/connectors
-          echo "Conector registrado exitosamente de forma automatica."
+          echo "Conector HTTP Source registrado."
+          curl -s -X POST -H "Content-Type: application/json" --data @/connectors/minio-sink-bronze.json http://localhost:8083/connectors
+          echo "Conector MinIO S3 Sink registrado."
         ) &
         
         # 3. Arrancar servicio
