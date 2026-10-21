@@ -273,10 +273,10 @@ def main():
     logging.info(f"Escribiendo Parquet Silver local en {STAGING_SILVER_DIR}...")
     df_silver.write.mode("overwrite").partitionBy("fecha_evento").parquet(STAGING_SILVER_DIR)
 
-    # Subir a MinIO Capa Silver en rutas compatibles
+    # Subir a MinIO Capa Silver exclusivamente en s3://silver/batch/fecha_evento=...
     if minio_client:
         logging.info("Subiendo Parquet de Capa Silver a MinIO...")
-        subir_directorio_minio(minio_client, STAGING_SILVER_DIR, bucket=bucket_silver, prefixes=["batch", "batch/fact_sismos"])
+        subir_directorio_minio(minio_client, STAGING_SILVER_DIR, bucket=bucket_silver, prefixes=["batch"])
 
     # -------------------------------------------------------------------------
     # 6. Transformación a Capa GOLD 1: Resumen Diario por País
@@ -304,7 +304,7 @@ def main():
 
     if minio_client:
         logging.info(f"Subiendo Parquet Gold 1 a MinIO '{bucket_gold}'...")
-        subir_directorio_minio(minio_client, STAGING_GOLD1_DIR, bucket=bucket_gold, prefixes=["batch/resumen_diario_pais", "batch/resumen_diario"])
+        subir_directorio_minio(minio_client, STAGING_GOLD1_DIR, bucket=bucket_gold, prefixes=["batch/resumen_diario_pais"])
 
     # -------------------------------------------------------------------------
     # 7. Transformación a Capa GOLD 2: Zonas Críticas y Hotspots Sísmicos
@@ -344,7 +344,7 @@ def main():
 
     if minio_client:
         logging.info(f"Subiendo Parquet Gold 2 a MinIO '{bucket_gold}'...")
-        subir_directorio_minio(minio_client, STAGING_GOLD2_DIR, bucket=bucket_gold, prefixes=["batch/zonas_criticas_frecuentes", "batch/zonas_criticas"])
+        subir_directorio_minio(minio_client, STAGING_GOLD2_DIR, bucket=bucket_gold, prefixes=["batch/zonas_criticas_frecuentes"])
 
     # -------------------------------------------------------------------------
     # 8. Carga a PostgreSQL (Serving Layer para Jhonatan)
