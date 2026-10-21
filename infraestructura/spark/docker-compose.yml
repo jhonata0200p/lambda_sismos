@@ -3,10 +3,11 @@ services:
     image: apache/spark:3.5.0
     container_name: spark_master
     hostname: spark-master
-    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+    command: ["/bin/bash", "-c", "python3 /opt/spark/apps/spark_trigger_server.py & exec /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master"]
     ports:
       - "8080:8080"   # UI Web del Master
       - "7077:7077"   # Puerto interno del Cluster
+      - "5050:5050"   # Servidor Trigger HTTP para Airflow
     volumes:
       - ./apps:/opt/spark/apps
     networks:

@@ -9,8 +9,9 @@ Descripción:
   1. Descarga el consolidado de las últimas 24 horas desde la API pública de USGS (all_day.geojson).
   2. Guarda el archivo JSON crudo e inmutable en el Data Lake MinIO en el bucket 'bronze' con la ruta:
      batch/año=YYYY/mes=MM/dia=DD/sismos_batch_YYYY-MM-DD.json
-  3. Emite la señal (Trigger) de relevo para que el script de Spark Batch de Kevin (spark_batch_etl.py)
-     inicie el procesamiento de Bronze a Silver y Gold.
+  3. Ejecuta automáticamente el pipeline de Spark Batch de Kevin (spark_batch_etl.py)
+     para transformar a Silver (Parquet), Gold (resumen_diario_pais y zonas_criticas_frecuentes en Parquet)
+     y cargar la Serving Layer en PostgreSQL (gold_resumen_batch y gold_zonas_batch).
 """
 
 from datetime import datetime, timedelta
@@ -186,12 +187,13 @@ def guardar_en_minio_bronze(**context):
 
 
 # -------------------------------------------------------------------------
-# Tarea 3: Notificación y Trigger para Kevin (Spark Batch)
+# Tarea 3: Disparar ejecución automática en Spark Batch (Kevin)
 # -------------------------------------------------------------------------
-def notificar_trigger_kevin(**context):
+def ejecutar_spark_batch_kevin(**context):
     """
-    Emite el registro oficial de relevo en los logs de Airflow para que el
-    carril Batch continúe en Apache Spark.
+    Dispara la ejecución del pipeline PySpark (spark_batch_etl.py) en spark_master
+    para procesar los datos de Bronze hacia Silver y Gold en MinIO,
+    y actualizar las tablas gold_resumen_batch y gold_zonas_batch en PostgreSQL.
     """
     ti = context["ti"]
     s3_uri = ti.xcom_pull(task_ids="tarea_2_guardar_minio_bronze", key="s3_bronze_uri")
@@ -206,12 +208,48 @@ def notificar_trigger_kevin(**context):
     [ESTADO]   : Lote de 24 horas descargado y depositado con éxito en MinIO Bronze.
     [RUTA S3]  : {s3_uri}
     [VOLUMEN]  : {total_sismos} eventos sísmicos registrados.
-    [ACCIÓN]   : DISPARO / TRIGGER LISTO PARA: spark_batch_etl.py
+    [ACCIÓN]   : DISPARANDO AUTOMÁTICAMENTE spark_batch_etl.py EN SPARK MASTER
     ================================================================================
     """
     logging.info(mensaje)
     print(mensaje)
-    return "TRIGGER_SENT_TO_KEVIN"
+
+    # Endpoints posibles para invocar el Trigger Service en el clúster Spark
+    spark_endpoints = [
+        "http://spark-master:5050/trigger",
+        "http://spark_master:5050/trigger",
+        "http://10.175.132.248:5050/trigger"
+    ]
+
+    spark_exitoso = False
+    ultimo_error = None
+
+    for ep in spark_endpoints:
+        try:
+            logging.info(f"Invocando Spark Batch ETL en {ep}...")
+            response = requests.post(ep, timeout=600)
+            
+            if response.status_code == 200:
+                data = response.json()
+                logging.info(">>> ¡SPARK BATCH EJECUTADO EXITOSAMENTE! <<<")
+                spark_log = data.get("output", "")
+                logging.info(f"Resumen de ejecución Spark:\n{spark_log}")
+                spark_exitoso = True
+                break
+            else:
+                ultimo_error = f"HTTP {response.status_code}: {response.text}"
+                logging.warning(f"Fallo en {ep}: {ultimo_error}")
+        except Exception as e:
+            ultimo_error = str(e)
+            logging.warning(f"No se pudo conectar a {ep}: {e}")
+
+    if not spark_exitoso:
+        raise RuntimeError(f"Error al disparar el proceso Spark Batch de Kevin: {ultimo_error}")
+
+    logging.info("=" * 80)
+    logging.info(">>> PIPELINE COMPLETO FINALIZADO: BRONZE -> SILVER -> GOLD (MinIO + PostgreSQL) <<<")
+    logging.info("=" * 80)
+    return "SPARK_BATCH_SUCCESS"
 
 
 # -------------------------------------------------------------------------
@@ -224,11 +262,11 @@ local_tz = pendulum.timezone("America/Bogota")
 with DAG(
     dag_id="dag_sismos_batch_usgs",
     default_args=default_args,
-    description="Pipeline Batch diario 7:00 AM - Ingesta USGS GeoJSON a MinIO Bronze y relevo a Spark",
+    description="Pipeline Batch diario 7:00 AM - Ingesta USGS GeoJSON a MinIO Bronze y ejecución automática Spark Batch",
     schedule="0 7 * * *",  # Todos los días a las 7:00 AM hora local
     start_date=pendulum.datetime(2026, 1, 1, tz=local_tz),
     catchup=False,
-    tags=["batch", "usgs", "sismos", "bronze", "jesus", "kevin"],
+    tags=["batch", "usgs", "sismos", "bronze", "silver", "gold", "jesus", "kevin"],
 ) as dag:
 
     tarea_1 = PythonOperator(
@@ -243,8 +281,8 @@ with DAG(
 
     tarea_3 = PythonOperator(
         task_id="tarea_3_trigger_spark_kevin",
-        python_callable=notificar_trigger_kevin,
+        python_callable=ejecutar_spark_batch_kevin,
     )
 
-    # Flujo secuencial de relevos
+    # Flujo secuencial de relevos: Bronze -> MinIO -> Spark ETL -> Silver/Gold/Postgres
     tarea_1 >> tarea_2 >> tarea_3
