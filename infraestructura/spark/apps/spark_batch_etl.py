@@ -45,8 +45,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 
 # Configuración MinIO Central del Equipo
 MINIO_REMOTE_ENDPOINT = os.getenv("MINIO_ENDPOINT", "10.175.132.248:9000").replace("http://", "").replace("https://", "")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "n3jTFho71P8FV8jPHhQC")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "vX4t11jbqRLXRkoTtkW3i6qVvWGvKY9E21tRvm54")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "oxkD4UWJsmTRAl5djFtL")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "9Fzr4JfLBmOfgkDH4vrzPL0MKBqOg3JkZoSWTkco")
 
 # Configuración PostgreSQL Serving Layer (Jhonatan en 10.175.132.248)
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "10.175.132.248")
