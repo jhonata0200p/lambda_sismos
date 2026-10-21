@@ -5,8 +5,10 @@ from datetime import datetime
 from dotenv import load_dotenv
 from database import get_db
 
-# Cargar variables de entorno desde .env
-load_dotenv()
+# Cargar variables de entorno desde el .env del directorio web
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(dotenv_path=env_path)
+load_dotenv() # Fallback al directorio actual
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
@@ -140,9 +142,11 @@ REGLAS ESTRICTAS DE RESPUESTA:
 
     # Modelos oficiales Gemini Flash con fallback automático en caso de demanda alta
     modelos_a_probar = [
-        "gemini-3.6-flash",
-        "gemini-3-flash-preview",
+        "gemini-flash-latest",
+        "gemini-3.5-flash-lite",
         "gemini-3.5-flash",
+        "gemini-3.6-flash",
+        "gemini-3.7-flash",
         "gemini-3.8-flash"
     ]
 
@@ -150,7 +154,7 @@ REGLAS ESTRICTAS DE RESPUESTA:
     for modelo in modelos_a_probar:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent?key={api_key}"
         try:
-            response = requests.post(url, json=payload, timeout=12)
+            response = requests.post(url, json=payload, timeout=8)
             if response.status_code == 200:
                 data = response.json()
                 texto_gemini = data["candidates"][0]["content"]["parts"][0]["text"]
