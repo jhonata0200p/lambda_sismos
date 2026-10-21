@@ -115,7 +115,7 @@ def procesar_microbatch(batch_df, batch_id):
         batch_df_unique.write \
             .mode("append") \
             .partitionBy("fecha_evento") \
-            .parquet("s3a://silver/streaming/fact_sismos/")
+            .parquet("s3a://silver/streaming/")
     except Exception as e:
         print(f"Error escribiendo Silver en MinIO: {e}")
 
@@ -308,7 +308,7 @@ try:
             {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "kafka://sismos_crudos@kafka"}}
         ],
         outputs=[
-            {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://silver/streaming/fact_sismos/@minio"}},
+            {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://silver/streaming/@minio"}},
             {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://gold/streaming/resumen_diario_pais/@minio"}},
             {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://gold/streaming/zonas_criticas_frecuentes/@minio"}},
             {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "postgres://sismos_db/gold_resumen_streaming@postgres"}},
