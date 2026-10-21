@@ -6,20 +6,23 @@ Emisor: JESÚS — Ingeniero de Orquestación Batch (Apache Airflow)
 Receptor: JHONATAN — Tech Lead / Base de Datos y Web
 
 Descripción:
-  1. Lee el consolidado diario de sismos (24 horas) depositado en MinIO Bronze (/batch/).
+  1. Descarga el consolidado diario de sismos depositado por Airflow en MinIO Bronze (/batch/).
   2. Transforma y limpia a Capa SILVER en formato Parquet particionado por fecha_evento.
   3. Modela y agrega a Capa GOLD en MinIO (Parquet):
      - Gold 1: resumen_diario_pais
      - Gold 2: zonas_criticas_frecuentes (hotspots / fallas geologicas ~10km2)
-  4. Inserta las tablas consolidadas en PostgreSQL (Serving Layer) via JDBC para alimentar
-     las vistas unificadas consumidas por la Web y Power BI.
+  4. Sube de forma automatizada las capas SILVER y GOLD a MinIO (Local y Remoto).
+  5. Inserta las tablas consolidadas en PostgreSQL (Serving Layer) via JDBC si está disponible.
 """
 
 import os
 import sys
+import shutil
 import logging
 from datetime import datetime
+import urllib.request
 
+from minio import Minio
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col, explode, to_timestamp, to_date, hour, when,
@@ -37,11 +40,11 @@ from pyspark.sql.types import (
 # -----------------------------------------------------------------------------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# Configuración MinIO (S3)
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://10.175.132.248:9000")
-MINIO_FALLBACK_ENDPOINT = os.getenv("MINIO_FALLBACK_ENDPOINT", "http://minio:9000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "n3jTFho71P8FV8jPHhQC")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "vX4t11jbqRLXRkoTtkW3i6qVvWGvKY9E21tRvm54")
+# Configuración MinIO
+MINIO_REMOTE_HOST = os.getenv("MINIO_ENDPOINT", "http://10.175.132.248:9000")
+MINIO_LOCAL_HOST = os.getenv("MINIO_FALLBACK_ENDPOINT", "http://minio:9000")
+MINIO_REMOTE_AK = os.getenv("MINIO_ACCESS_KEY", "n3jTFho71P8FV8jPHhQC")
+MINIO_REMOTE_SK = os.getenv("MINIO_SECRET_KEY", "vX4t11jbqRLXRkoTtkW3i6qVvWGvKY9E21tRvm54")
 
 # Configuración PostgreSQL Serving Layer
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "postgres_serving")
@@ -51,25 +54,98 @@ POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres_user")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password123")
 POSTGRES_JDBC_URL = f"jdbc:postgresql://{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
-# Rutas del Data Lake
-BRONZE_S3_PATH = "s3a://bronze/batch/*/*/*/*.json"
+# Rutas locales temporales de staging en el contenedor Spark
+STAGING_BRONZE_DIR = "/tmp/bronze_batch"
+STAGING_SILVER_DIR = "/tmp/silver_batch"
+STAGING_GOLD1_DIR = "/tmp/gold1_batch"
+STAGING_GOLD2_DIR = "/tmp/gold2_batch"
 LOCAL_FALLBACK_PATH = "/opt/spark/apps/sample_batch_dia.json"
-SILVER_S3_PATH = "s3a://silver/batch/"
-GOLD_1_S3_PATH = "s3a://gold/batch/resumen_diario_pais/"
-GOLD_2_S3_PATH = "s3a://gold/batch/zonas_criticas_frecuentes/"
 
 
-def crear_spark_session(endpoint: str) -> SparkSession:
-    """Crea la sesion de Spark con soporte para MinIO (S3A) y JDBC Postgres."""
-    logging.info(f"Iniciando SparkSession configurando MinIO endpoint en: {endpoint}")
+def conectar_minios():
+    """Detecta y devuelve los clientes MinIO activos (remoto y/o local)."""
+    clientes = []
+    
+    # 1. Probar remoto (10.175.132.248:9000)
+    try:
+        urllib.request.urlopen(f"{MINIO_REMOTE_HOST}/minio/health/live", timeout=2)
+        host_remoto = MINIO_REMOTE_HOST.replace("http://", "").replace("https://", "")
+        m_remoto = Minio(host_remoto, access_key=MINIO_REMOTE_AK, secret_key=MINIO_REMOTE_SK, secure=False)
+        m_remoto.list_buckets()
+        logging.info(f"¡Conectado exitosamente a MinIO REMOTO: {MINIO_REMOTE_HOST}!")
+        clientes.append((m_remoto, MINIO_REMOTE_HOST))
+    except Exception as e:
+        logging.warning(f"MinIO Remoto ({MINIO_REMOTE_HOST}) no responde: {e}")
+
+    # 2. Probar local (minio:9000)
+    try:
+        urllib.request.urlopen(f"{MINIO_LOCAL_HOST}/minio/health/live", timeout=2)
+        host_local = MINIO_LOCAL_HOST.replace("http://", "").replace("https://", "")
+        m_local = Minio(host_local, access_key="minioadmin", secret_key="minioadmin", secure=False)
+        m_local.list_buckets()
+        logging.info(f"¡Conectado exitosamente a MinIO LOCAL: {MINIO_LOCAL_HOST}!")
+        clientes.append((m_local, MINIO_LOCAL_HOST))
+    except Exception as e:
+        logging.warning(f"MinIO Local ({MINIO_LOCAL_HOST}) no responde: {e}")
+
+    return clientes
+
+
+def descargar_bronze(clientes, bucket="bronze", prefix="batch/") -> list:
+    """Descarga los archivos JSON crudos depositados por Airflow."""
+    os.makedirs(STAGING_BRONZE_DIR, exist_ok=True)
+    archivos = []
+    
+    for client, ep in clientes:
+        try:
+            logging.info(f"Buscando archivos crudos en {ep} -> {bucket}/{prefix}...")
+            objetos = client.list_objects(bucket, prefix=prefix, recursive=True)
+            for obj in objetos:
+                if not obj.object_name.endswith(".json"):
+                    continue
+                fname = os.path.basename(obj.object_name)
+                local_path = os.path.join(STAGING_BRONZE_DIR, fname)
+                logging.info(f"Descargando {obj.object_name} ({obj.size} bytes) de {ep}...")
+                client.fget_object(bucket, obj.object_name, local_path)
+                if local_path not in archivos:
+                    archivos.append(local_path)
+            if archivos:
+                break
+        except Exception as e:
+            logging.warning(f"Error descargando Bronze de {ep}: {e}")
+
+    return archivos
+
+
+def subir_directorio_minio(clientes, local_dir: str, bucket: str, prefix: str):
+    """Sube recursivamente archivos Parquet a todos los MinIO activos."""
+    if not os.path.exists(local_dir):
+        return
+
+    for client, ep in clientes:
+        subidos = 0
+        logging.info(f"Subiendo resultados a {ep} (bucket: {bucket}, prefix: {prefix})...")
+        for root, _, files in os.walk(local_dir):
+            for fname in files:
+                if fname.startswith(".") or fname.endswith(".crc"):
+                    continue
+                local_path = os.path.join(root, fname)
+                rel_path = os.path.relpath(local_path, local_dir).replace("\\", "/")
+                remote_key = f"{prefix.rstrip('/')}/{rel_path}" if prefix else rel_path
+                try:
+                    client.fput_object(bucket, remote_key, local_path)
+                    logging.info(f"✓ Subido a {ep}: {bucket}/{remote_key}")
+                    subidos += 1
+                except Exception as e:
+                    logging.error(f"Error subiendo {remote_key} a {ep}: {e}")
+        logging.info(f"Total archivos subidos a {ep} en {bucket}/{prefix}: {subidos}")
+
+
+def crear_spark_session() -> SparkSession:
+    """Crea la sesion de Apache Spark para procesamiento local/cluster."""
+    logging.info("Iniciando SparkSession para Kevin_Spark_Batch_ETL...")
     return SparkSession.builder \
         .appName("Kevin_Spark_Batch_ETL") \
-        .config("spark.hadoop.fs.s3a.endpoint", endpoint) \
-        .config("spark.hadoop.fs.s3a.access.key", MINIO_ACCESS_KEY) \
-        .config("spark.hadoop.fs.s3a.secret.key", MINIO_SECRET_KEY) \
-        .config("spark.hadoop.fs.s3a.path.style.access", "true") \
-        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
-        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
         .config("spark.sql.streaming.forceDeleteTempCheckpointLocation", "true") \
         .getOrCreate()
 
@@ -79,36 +155,34 @@ def main():
     print(">>> INICIANDO PIPELINE BATCH ETL — KEVIN (APACHE SPARK) <<<")
     print("=" * 80)
 
-    # 1. Crear sesión de Spark
-    try:
-        spark = crear_spark_session(MINIO_ENDPOINT)
-    except Exception as e:
-        logging.warning(f"Error con endpoint principal {MINIO_ENDPOINT}: {e}. Usando fallback local {MINIO_FALLBACK_ENDPOINT}")
-        spark = crear_spark_session(MINIO_FALLBACK_ENDPOINT)
+    # 1. Conectar a los MinIO disponibles
+    clientes_minio = conectar_minios()
 
+    # 2. Descargar datos crudos desde MinIO Bronze (Airflow)
+    archivos_json = []
+    if clientes_minio:
+        archivos_json = descargar_bronze(clientes_minio, bucket="bronze", prefix="batch/")
+
+    # 3. Inicializar SparkSession
+    spark = crear_spark_session()
     spark.sparkContext.setLogLevel("WARN")
 
-    # 2. Lectura de Capa Bronze
-    # Intenta leer desde MinIO; si no encuentra datos o falla la conexion, usa el sample local
+    # 4. Lectura de Capa Bronze
     df_raw = None
-    try:
-        logging.info(f"Intentando leer datos crudos desde MinIO: {BRONZE_S3_PATH}")
-        df_raw = spark.read.option("multiline", "true").json(BRONZE_S3_PATH)
-        total_raw = df_raw.count()
-        logging.info(f"Lectura exitosa desde MinIO. Lotes encontrados: {total_raw}")
-    except Exception as e:
-        logging.warning(f"No fue posible leer de MinIO S3: {e}")
+    if archivos_json:
+        logging.info(f"Leyendo archivos Bronze descargados: {archivos_json}")
+        df_raw = spark.read.option("multiline", "true").json(archivos_json)
+    else:
+        logging.warning("No se obtuvieron archivos de MinIO. Buscando fallback local...")
         posibles_rutas_locales = [
             LOCAL_FALLBACK_PATH,
             "/opt/spark/apps/sample_batch_dia.json",
             "infraestructura/spark/apps/sample_batch_dia.json",
-            "data/sample_batch_dia.json",
-            "../data/sample_batch_dia.json",
-            "../../data/sample_batch_dia.json"
+            "data/sample_batch_dia.json"
         ]
         for ruta in posibles_rutas_locales:
             if os.path.exists(ruta):
-                logging.info(f"Usando archivo de prueba local: {ruta}")
+                logging.info(f"Usando archivo de respaldo local: {ruta}")
                 df_raw = spark.read.option("multiline", "true").json(ruta)
                 break
 
@@ -116,17 +190,20 @@ def main():
         logging.error("No se pudo obtener datos crudos ni de MinIO ni de archivo local. Abortando.")
         sys.exit(1)
 
+    total_crudos = df_raw.count()
+    logging.info(f"Lectura exitosa de Bronze. Total lotes cargados: {total_crudos}")
+
     # -------------------------------------------------------------------------
-    # 3. Transformación a Capa SILVER (fact_sismos)
+    # 5. Transformación a Capa SILVER (fact_sismos)
     # -------------------------------------------------------------------------
     print("\n" + "-" * 60)
     print(">>> PROCESANDO CAPA SILVER (Limpieza, Aplanado y Desduplicación) <<<")
     print("-" * 60)
 
-    # Desanidar el array 'features' de GeoJSON
+    # Desanidar array 'features' de GeoJSON
     df_features = df_raw.select(explode(col("features")).alias("feature"))
 
-    # Extraer campos tipados y normalizados segun especificacion tecnica
+    # Extraer campos tipados y normalizados segun especificacion tecnica Medallion
     df_silver = df_features.select(
         col("feature.id").alias("id_evento"),
         to_timestamp(col("feature.properties.time") / 1000).alias("fecha_hora_utc"),
@@ -155,19 +232,22 @@ def main():
     )
 
     total_silver = df_silver.count()
-    logging.info(f"Total de sismos limpios en Capa Silver: {total_silver}")
+    logging.info(f"Total de sismos limpios y desduplicados en Capa Silver: {total_silver}")
     df_silver.select("id_evento", "fecha_evento", "hora_evento", "magnitud", "clasificacion_intensidad", "pais_estado").show(5, truncate=False)
 
-    # Guardar en MinIO Silver Parquet particionado
-    try:
-        logging.info(f"Guardando Capa Silver en MinIO: {SILVER_S3_PATH}")
-        df_silver.write.mode("append").partitionBy("fecha_evento").parquet(SILVER_S3_PATH)
-        logging.info("¡Capa Silver guardada exitosamente en MinIO!")
-    except Exception as e:
-        logging.warning(f"Aviso guardando Silver en MinIO: {e}")
+    # Guardar en staging local Parquet particionado
+    if os.path.exists(STAGING_SILVER_DIR):
+        shutil.rmtree(STAGING_SILVER_DIR)
+    logging.info(f"Escribiendo Parquet Silver local en {STAGING_SILVER_DIR}...")
+    df_silver.write.mode("overwrite").partitionBy("fecha_evento").parquet(STAGING_SILVER_DIR)
+
+    # Subir a MinIO Capa Silver
+    if clientes_minio:
+        logging.info("Subiendo Parquet de Capa Silver a MinIO...")
+        subir_directorio_minio(clientes_minio, STAGING_SILVER_DIR, bucket="silver", prefix="batch")
 
     # -------------------------------------------------------------------------
-    # 4. Transformación a Capa GOLD 1: Resumen Diario por País
+    # 6. Transformación a Capa GOLD 1: Resumen Diario por País
     # -------------------------------------------------------------------------
     print("\n" + "-" * 60)
     print(">>> PROCESANDO CAPA GOLD TABLA 1: resumen_diario_pais <<<")
@@ -185,15 +265,17 @@ def main():
     logging.info(f"Total registros agregados en Gold 1: {df_gold_diario.count()}")
     df_gold_diario.show(5, truncate=False)
 
-    try:
-        logging.info(f"Guardando Gold 1 en MinIO: {GOLD_1_S3_PATH}")
-        df_gold_diario.write.mode("overwrite").parquet(GOLD_1_S3_PATH)
-        logging.info("¡Capa Gold 1 guardada exitosamente en MinIO!")
-    except Exception as e:
-        logging.warning(f"Aviso guardando Gold 1 en MinIO: {e}")
+    if os.path.exists(STAGING_GOLD1_DIR):
+        shutil.rmtree(STAGING_GOLD1_DIR)
+    logging.info(f"Escribiendo Parquet Gold 1 local en {STAGING_GOLD1_DIR}...")
+    df_gold_diario.write.mode("overwrite").parquet(STAGING_GOLD1_DIR)
+
+    if clientes_minio:
+        logging.info("Subiendo Parquet Gold 1 a MinIO...")
+        subir_directorio_minio(clientes_minio, STAGING_GOLD1_DIR, bucket="gold", prefix="batch/resumen_diario_pais")
 
     # -------------------------------------------------------------------------
-    # 5. Transformación a Capa GOLD 2: Zonas Críticas y Hotspots Sísmicos
+    # 7. Transformación a Capa GOLD 2: Zonas Críticas y Hotspots Sísmicos
     # -------------------------------------------------------------------------
     print("\n" + "-" * 60)
     print(">>> PROCESANDO CAPA GOLD TABLA 2: zonas_criticas_frecuentes <<<")
@@ -221,15 +303,17 @@ def main():
     logging.info(f"Total zonas críticas detectadas en Gold 2: {df_gold_hotspots.count()}")
     df_gold_hotspots.show(5, truncate=False)
 
-    try:
-        logging.info(f"Guardando Gold 2 en MinIO: {GOLD_2_S3_PATH}")
-        df_gold_hotspots.write.mode("overwrite").parquet(GOLD_2_S3_PATH)
-        logging.info("¡Capa Gold 2 guardada exitosamente en MinIO!")
-    except Exception as e:
-        logging.warning(f"Aviso guardando Gold 2 en MinIO: {e}")
+    if os.path.exists(STAGING_GOLD2_DIR):
+        shutil.rmtree(STAGING_GOLD2_DIR)
+    logging.info(f"Escribiendo Parquet Gold 2 local en {STAGING_GOLD2_DIR}...")
+    df_gold_hotspots.write.mode("overwrite").parquet(STAGING_GOLD2_DIR)
+
+    if clientes_minio:
+        logging.info("Subiendo Parquet Gold 2 a MinIO...")
+        subir_directorio_minio(clientes_minio, STAGING_GOLD2_DIR, bucket="gold", prefix="batch/zonas_criticas_frecuentes")
 
     # -------------------------------------------------------------------------
-    # 6. Carga a PostgreSQL (Serving Layer para Jhonatan)
+    # 8. Carga a PostgreSQL (Serving Layer para Jhonatan)
     # -------------------------------------------------------------------------
     print("\n" + "-" * 60)
     print(">>> CARGA A POSTGRESQL (Serving Layer) VIA JDBC <<<")
@@ -261,7 +345,7 @@ def main():
         logging.info("¡Tabla 'gold_zonas_batch' escrita exitosamente en PostgreSQL!")
     except Exception as e:
         logging.warning(f"Aviso de conexion JDBC hacia PostgreSQL: {e}")
-        logging.info("Las tablas quedaron completamente procesadas y guardadas en formato Parquet.")
+        logging.info("Las tablas quedaron completamente procesadas y guardadas en formato Parquet en MinIO.")
 
     print("\n" + "=" * 80)
     print(">>> PIPELINE BATCH ETL COMPLETADO EXITOSAMENTE — KEVIN <<<")
