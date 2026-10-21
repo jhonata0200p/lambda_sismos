@@ -3,13 +3,9 @@
   "config": {
     "connector.class": "io.confluent.connect.s3.S3SinkConnector",
     "tasks.max": "1",
-    "topics": "sismos_crudos",
+    "topics": "streaming",
     "s3.bucket.name": "bronze",
     "topics.dir": "",
-    "transforms": "ChangeTopic",
-    "transforms.ChangeTopic.type": "org.apache.kafka.connect.transforms.RegexRouter",
-    "transforms.ChangeTopic.regex": "sismos_crudos",
-    "transforms.ChangeTopic.replacement": "streaming",
     "store.url": "http://10.175.132.248:9000",
     "s3.path.style.access": "true",
     "aws.access.key.id": "oxkD4UWJsmTRAl5djFtL",
@@ -27,6 +23,6 @@
     "locale": "es",
     "timezone": "UTC",
     "timestamp.extractor": "Wallclock",
-    "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter"
+    "value.converter": "org.apache.kafka.converters.ByteArrayConverter"
   }
 }
