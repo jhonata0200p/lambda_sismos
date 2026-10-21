@@ -2,6 +2,7 @@
 infraestructura/minIO/minio_data/
 infraestructura/airflow/logs/*
 !infraestructura/airflow/logs/.gitkeep
+infraestructura/airflow/config/airflow.cfg
 
 # Python y entornos virtuales
 __pycache__/
