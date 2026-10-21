@@ -12,52 +12,57 @@
 
     <style>
         /* ==========================================================================
-           PALETA DE COLORES: OBSERVATORIO GEOFÍSICO Y TECTÓNICO (SIN PITCH BLACK)
-           Inspirada en el USGS (United States Geological Survey) y centros sismológicos:
-           Pizarra oceánica profunda, basalto tectónico, acentos en magma, lava y trinchera.
+           PALETA DE COLORES: EDITORIAL GEOLÓGICO // BEIGE, ARENA Y TONOS TIERRA
+           Inspirada en cartografía clásica, revistas geológicas suizas y archivos de campo.
+           Elimina el negro tecnológico y los brillos artificiales.
            ========================================================================== */
         :root {
-            /* Fondos: Tonos Pizarra Basáltica y Océano Profundo */
-            --bg-void: #0d1522;
-            --bg-panel: rgba(19, 30, 46, 0.96);
-            --bg-surface: #19273c;
-            --bg-surface-elevated: #22344f;
-            --bg-input: #131e2e;
+            /* Fondos: Lino Cálido, Papel Marfil y Travertino */
+            --bg-canvas: #f6f3eb;
+            --bg-card: #ffffff;
+            --bg-card-elevated: #faf8f3;
+            --bg-subtle: #ede7db;
+            --bg-input: #f4eee3;
             
-            /* Bordes y Líneas Tectónicas */
-            --border-subtle: rgba(148, 163, 184, 0.16);
-            --border-tactical: rgba(249, 115, 22, 0.35);
-            --border-active: #f97316;
+            /* Bordes de Arcilla y Arenisca */
+            --border-subtle: #e5ded2;
+            --border-card: #d9cfbf;
+            --border-active: #c2410c;
             
-            /* Acentos Sismológicos */
-            --magma-primary: #ea580c;
-            --magma-glow: rgba(234, 88, 12, 0.35);
-            --magma-light: #fb923c;
+            /* Tonos Tierra Naturales (Sin neones ni brillos sintéticos) */
+            --terracotta: #c2410c;
+            --terracotta-soft: rgba(194, 65, 12, 0.12);
+            --clay-dark: #9a3412;
             
-            --amber-seismic: #f59e0b;
-            --amber-glow: rgba(245, 158, 11, 0.3);
+            --ochre-warm: #b45309;
+            --ochre-soft: rgba(180, 83, 9, 0.12);
             
-            --crimson-hazard: #ef4444;
-            --crimson-glow: rgba(239, 68, 68, 0.45);
+            --crimson-earth: #b91c1c;
+            --crimson-soft: rgba(185, 28, 28, 0.12);
             
-            --trench-cyan: #38bdf8;
-            --trench-glow: rgba(56, 189, 248, 0.3);
+            --sage-forest: #166534;
+            --sage-soft: rgba(22, 101, 52, 0.12);
             
-            --green-station: #10b981;
-            --green-glow: rgba(16, 185, 129, 0.35);
+            --river-slate: #0369a1;
+            --river-soft: rgba(3, 105, 161, 0.12);
             
-            /* Tipografía y Textos */
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
+            /* Tipografía: Tintas de Carbón Tostado y Piedra Cálida */
+            --text-primary: #29241e;
+            --text-secondary: #635b50;
+            --text-muted: #918778;
+            
             --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
             --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            
+            --shadow-soft: 0 2px 8px rgba(67, 56, 45, 0.06);
+            --shadow-card: 0 4px 16px rgba(67, 56, 45, 0.08);
+            --shadow-lift: 0 12px 30px rgba(67, 56, 45, 0.12);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background-color: var(--bg-void);
+            background-color: var(--bg-canvas);
             color: var(--text-primary);
             font-family: var(--font-sans);
             height: 100vh;
@@ -68,7 +73,7 @@
             user-select: none;
         }
 
-        /* EFECTO DE TEMBLOR SÍSMICO EN VENTANA */
+        /* EFECTO DE TEMBLOR SÍSMICO */
         @keyframes earthquake-rumble {
             0% { transform: translate(0, 0); }
             15% { transform: translate(-3px, 2px); }
@@ -81,19 +86,19 @@
         .rumble-active { animation: earthquake-rumble 0.4s ease-in-out; }
 
         /* ==========================================================================
-           1. TOP TELEMETRY HEADER
+           1. TOP TELEMETRY BAR (BARRA SUPERIOR BEIGE / ARENA)
            ========================================================================== */
         header.hud-header {
-            height: 52px;
-            background: linear-gradient(180deg, #172437 0%, #101a2b 100%);
+            height: 54px;
+            background: #ffffff;
             border-bottom: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 16px;
+            padding: 0 20px;
             z-index: 1000;
             flex-shrink: 0;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+            box-shadow: var(--shadow-soft);
         }
 
         .hud-brand {
@@ -107,19 +112,19 @@
             font-size: 0.65rem;
             font-weight: 800;
             letter-spacing: 1px;
-            padding: 3px 8px;
-            background: rgba(234, 88, 12, 0.15);
-            border: 1px solid var(--border-tactical);
-            color: var(--magma-light);
+            padding: 4px 8px;
+            background: var(--terracotta-soft);
+            border: 1px solid rgba(194, 65, 12, 0.3);
+            color: var(--terracotta);
             border-radius: 4px;
             text-transform: uppercase;
         }
 
         .hud-title {
-            font-size: 0.88rem;
+            font-size: 0.9rem;
             font-weight: 700;
-            letter-spacing: 0.5px;
-            color: #ffffff;
+            letter-spacing: 0.3px;
+            color: var(--text-primary);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -127,14 +132,14 @@
 
         .hud-title span {
             color: var(--text-muted);
-            font-weight: 400;
+            font-weight: 500;
             font-size: 0.78rem;
         }
 
         .hud-telemetry-strip {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 18px;
             font-family: var(--font-mono);
             font-size: 0.72rem;
         }
@@ -147,32 +152,25 @@
         }
 
         .telemetry-item strong {
-            color: #ffffff;
+            color: var(--text-primary);
             font-weight: 600;
         }
 
-        .status-indicator {
-            width: 7px;
-            height: 7px;
+        .status-dot {
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             display: inline-block;
         }
 
-        .status-indicator.online {
-            background: var(--green-station);
-            box-shadow: 0 0 8px var(--green-station);
-            animation: pulse-dot 1.8s infinite;
+        .status-dot.online {
+            background: var(--sage-forest);
+            box-shadow: 0 0 0 3px rgba(22, 101, 52, 0.15);
         }
 
-        .status-indicator.hazard {
-            background: var(--crimson-hazard);
-            box-shadow: 0 0 8px var(--crimson-hazard);
-            animation: pulse-dot 0.8s infinite;
-        }
-
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.35; transform: scale(0.8); }
+        .status-dot.hazard {
+            background: var(--crimson-earth);
+            box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.18);
         }
 
         .hud-controls {
@@ -182,61 +180,60 @@
         }
 
         .hud-btn {
-            background: var(--bg-surface);
-            border: 1px solid var(--border-subtle);
+            background: var(--bg-card-elevated);
+            border: 1px solid var(--border-card);
             color: var(--text-secondary);
             font-family: var(--font-mono);
             font-size: 0.7rem;
             font-weight: 600;
-            padding: 5px 11px;
+            padding: 6px 12px;
             border-radius: 5px;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 6px;
             transition: all 0.15s ease;
+            box-shadow: var(--shadow-soft);
         }
 
         .hud-btn:hover {
-            background: var(--bg-surface-elevated);
-            color: #ffffff;
-            border-color: var(--border-tactical);
+            background: #ffffff;
+            color: var(--text-primary);
+            border-color: var(--text-muted);
         }
 
         .hud-btn.active {
-            background: rgba(234, 88, 12, 0.2);
-            color: var(--magma-light);
-            border-color: var(--magma-primary);
+            background: var(--terracotta-soft);
+            color: var(--terracotta);
+            border-color: var(--terracotta);
         }
 
         .hud-btn-danger {
-            background: rgba(239, 68, 68, 0.15);
-            border-color: rgba(239, 68, 68, 0.35);
-            color: #fca5a5;
+            background: var(--crimson-soft);
+            border-color: rgba(185, 28, 28, 0.35);
+            color: var(--crimson-earth);
         }
 
         .hud-btn-danger:hover {
-            background: var(--crimson-hazard);
+            background: var(--crimson-earth);
             color: #ffffff;
-            border-color: var(--crimson-hazard);
-            box-shadow: 0 0 12px var(--crimson-glow);
+            border-color: var(--crimson-earth);
         }
 
         /* ==========================================================================
-           2. MAIN OPERATIONS GRID (100vh Layout)
+           2. MAIN OPERATIONS GRID (3 COLUMNAS TIERRA Y ARENA)
            ========================================================================== */
         main.operations-grid {
             flex: 1;
             display: grid;
             grid-template-columns: 340px 1fr 380px;
-            height: calc(100vh - 52px - 36px);
+            height: calc(100vh - 54px - 38px);
             overflow: hidden;
             position: relative;
         }
 
         .panel-column {
-            background: var(--bg-panel);
-            backdrop-filter: blur(12px);
+            background: #ffffff;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -252,8 +249,9 @@
         }
 
         .panel-section {
-            padding: 12px 14px;
+            padding: 14px 16px;
             border-bottom: 1px solid var(--border-subtle);
+            background: #ffffff;
         }
 
         .section-header {
@@ -265,49 +263,51 @@
 
         .section-label {
             font-family: var(--font-mono);
-            font-size: 0.67rem;
+            font-size: 0.68rem;
             font-weight: 700;
             color: var(--text-muted);
             letter-spacing: 0.8px;
             text-transform: uppercase;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
         }
 
         .section-label::before {
             content: "";
-            width: 3px;
-            height: 10px;
-            background: var(--magma-primary);
+            width: 4px;
+            height: 11px;
+            background: var(--terracotta);
             display: inline-block;
+            border-radius: 1px;
         }
 
         /* METRIC GAUGES */
         .metrics-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            gap: 10px;
         }
 
         .gauge-card {
-            background: var(--bg-surface);
+            background: var(--bg-card-elevated);
             border: 1px solid var(--border-subtle);
             border-radius: 6px;
-            padding: 9px 11px;
+            padding: 10px 12px;
             display: flex;
             flex-direction: column;
             gap: 2px;
-            transition: border-color 0.15s ease;
+            transition: all 0.15s ease;
         }
 
         .gauge-card:hover {
-            border-color: var(--border-tactical);
+            border-color: var(--border-card);
+            box-shadow: var(--shadow-soft);
         }
 
         .gauge-card.hazard {
-            border-color: rgba(239, 68, 68, 0.45);
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, var(--bg-surface) 100%);
+            border-color: rgba(185, 28, 28, 0.3);
+            background: linear-gradient(135deg, rgba(185, 28, 28, 0.05) 0%, var(--bg-card-elevated) 100%);
         }
 
         .gauge-label {
@@ -316,23 +316,23 @@
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            font-weight: 600;
         }
 
         .gauge-value {
             font-family: var(--font-mono);
             font-size: 1.35rem;
             font-weight: 800;
-            color: #ffffff;
+            color: var(--text-primary);
             line-height: 1.1;
         }
 
         .gauge-value.hazard {
-            color: var(--crimson-hazard);
-            text-shadow: 0 0 10px var(--crimson-glow);
+            color: var(--crimson-earth);
         }
 
         .gauge-sub {
-            font-size: 0.63rem;
+            font-size: 0.62rem;
             color: var(--text-muted);
             font-family: var(--font-mono);
             margin-top: 2px;
@@ -340,11 +340,11 @@
 
         /* DESGLOSE LAMBDA (STREAMING VS BATCH) */
         .lambda-split-bar {
-            background: var(--bg-surface);
+            background: var(--bg-card-elevated);
             border: 1px solid var(--border-subtle);
             border-radius: 6px;
             padding: 10px 12px;
-            margin-top: 8px;
+            margin-top: 10px;
         }
 
         .split-bar-header {
@@ -353,25 +353,24 @@
             font-family: var(--font-mono);
             font-size: 0.68rem;
             margin-bottom: 6px;
+            font-weight: 600;
         }
 
         .split-progress {
             height: 6px;
-            background: #111a28;
+            background: var(--bg-subtle);
             border-radius: 3px;
             overflow: hidden;
             display: flex;
         }
 
         .split-fill-stream {
-            background: var(--trench-cyan);
-            box-shadow: 0 0 8px var(--trench-cyan);
+            background: var(--river-slate);
             transition: width 0.4s ease;
         }
 
         .split-fill-batch {
-            background: #a855f7;
-            box-shadow: 0 0 8px #a855f7;
+            background: #9333ea;
             transition: width 0.4s ease;
         }
 
@@ -381,62 +380,66 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            background: #ffffff;
         }
 
         .feed-header-bar {
-            padding: 10px 14px;
+            padding: 10px 16px;
             border-bottom: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(19, 30, 46, 0.7);
+            background: var(--bg-card-elevated);
         }
 
         .feed-list {
             flex: 1;
             overflow-y: auto;
-            padding: 8px 10px;
+            padding: 10px 12px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 7px;
+            background: #ffffff;
         }
 
-        .feed-list::-webkit-scrollbar { width: 4px; }
-        .feed-list::-webkit-scrollbar-thumb { background: #263852; border-radius: 2px; }
+        .feed-list::-webkit-scrollbar { width: 5px; }
+        .feed-list::-webkit-scrollbar-thumb { background: #d9cfbf; border-radius: 3px; }
 
         .seismic-event-card {
-            background: var(--bg-surface);
+            background: #ffffff;
             border: 1px solid var(--border-subtle);
             border-radius: 6px;
-            padding: 8px 10px;
+            padding: 9px 11px;
             display: flex;
             align-items: center;
             gap: 10px;
             cursor: pointer;
             transition: all 0.15s ease;
+            box-shadow: 0 1px 3px rgba(67, 56, 45, 0.04);
         }
 
         .seismic-event-card:hover {
-            border-color: var(--border-tactical);
-            background: var(--bg-surface-elevated);
+            border-color: var(--terracotta);
+            background: var(--bg-card-elevated);
             transform: translateX(2px);
+            box-shadow: var(--shadow-soft);
         }
 
         .seismic-event-card.hazard-critical {
-            border-left: 3px solid var(--crimson-hazard);
+            border-left: 4px solid var(--crimson-earth);
         }
 
         .seismic-event-card.hazard-warning {
-            border-left: 3px solid var(--amber-seismic);
+            border-left: 4px solid var(--ochre-warm);
         }
 
         .seismic-event-card.hazard-normal {
-            border-left: 3px solid var(--trench-cyan);
+            border-left: 4px solid var(--river-slate);
         }
 
         .event-mag-pill {
             font-family: var(--font-mono);
-            font-size: 0.85rem;
+            font-size: 0.88rem;
             font-weight: 800;
             padding: 3px 6px;
             border-radius: 4px;
@@ -446,21 +449,21 @@
         }
 
         .event-mag-pill.critical {
-            background: rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
-            border: 1px solid var(--crimson-hazard);
+            background: var(--crimson-soft);
+            color: var(--crimson-earth);
+            border: 1px solid rgba(185, 28, 28, 0.4);
         }
 
         .event-mag-pill.warning {
-            background: rgba(245, 158, 11, 0.2);
-            color: #fde68a;
-            border: 1px solid var(--amber-seismic);
+            background: var(--ochre-soft);
+            color: var(--ochre-warm);
+            border: 1px solid rgba(180, 83, 9, 0.4);
         }
 
         .event-mag-pill.normal {
-            background: rgba(56, 189, 248, 0.2);
-            color: #bae6fd;
-            border: 1px solid var(--trench-cyan);
+            background: var(--river-soft);
+            color: var(--river-slate);
+            border: 1px solid rgba(3, 105, 161, 0.4);
         }
 
         .event-info {
@@ -468,13 +471,13 @@
             min-width: 0;
             display: flex;
             flex-direction: column;
-            gap: 1px;
+            gap: 2px;
         }
 
         .event-place {
-            font-size: 0.76rem;
-            font-weight: 600;
-            color: #ffffff;
+            font-size: 0.77rem;
+            font-weight: 700;
+            color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -489,11 +492,11 @@
         }
 
         /* ==========================================================================
-           CENTRO: MAPA SÍSMICO Y CONTROL DE CAPAS
+           CENTRO: MAPA SÍSMICO EDITORIAL (CON AUTO-ENFOQUE DE CÁMARA)
            ========================================================================== */
         .map-center-container {
             position: relative;
-            background: #0e1724;
+            background: #ede7dc;
             height: 100%;
             width: 100%;
             overflow: hidden;
@@ -502,7 +505,7 @@
         #seismic-map {
             width: 100%;
             height: 100%;
-            background: #0e1724;
+            background: #ede7dc;
         }
 
         .map-overlay-hud {
@@ -528,19 +531,19 @@
             right: 14px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
             align-items: flex-end;
         }
 
-        /* SELECTOR DE CAPAS DE MAPA (CERO API KEYS // 100% LIBRE) */
+        /* SELECTOR DE CAPAS DE MAPA (CERO API KEYS // ESTILO TIERRA/BEIGE) */
         .basemap-switcher-bar {
             display: flex;
-            background: var(--bg-panel);
-            border: 1px solid var(--border-subtle);
+            background: #ffffff;
+            border: 1px solid var(--border-card);
             border-radius: 6px;
             padding: 3px;
             gap: 3px;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+            box-shadow: var(--shadow-card);
         }
 
         .basemap-btn {
@@ -548,48 +551,109 @@
             border: none;
             color: var(--text-secondary);
             font-family: var(--font-mono);
-            font-size: 0.65rem;
+            font-size: 0.66rem;
             font-weight: 700;
-            padding: 4px 9px;
+            padding: 5px 10px;
             border-radius: 4px;
             cursor: pointer;
             transition: all 0.15s;
         }
 
         .basemap-btn:hover {
-            background: var(--bg-surface-elevated);
-            color: #ffffff;
+            background: var(--bg-subtle);
+            color: var(--text-primary);
         }
 
         .basemap-btn.active {
-            background: var(--magma-primary);
+            background: var(--terracotta);
             color: #ffffff;
-            box-shadow: 0 0 8px var(--magma-glow);
         }
 
-        .no-api-badge {
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px solid rgba(16, 185, 129, 0.35);
-            color: #6ee7b7;
+        /* INDICADOR Y CONTROL DE CÁMARA AUTO-ENFOQUE */
+        .camera-autofocus-badge {
+            background: #ffffff;
+            border: 1px solid var(--border-card);
+            border-radius: 5px;
+            padding: 5px 10px;
             font-family: var(--font-mono);
-            font-size: 0.62rem;
+            font-size: 0.65rem;
             font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 4px;
-            letter-spacing: 0.5px;
+            color: var(--text-primary);
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
+            box-shadow: var(--shadow-soft);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.15s ease;
+        }
+
+        .camera-autofocus-badge:hover {
+            background: var(--bg-card-elevated);
+            border-color: var(--terracotta);
+        }
+
+        .camera-autofocus-badge.active {
+            background: var(--sage-soft);
+            border-color: rgba(22, 101, 52, 0.4);
+            color: var(--sage-forest);
+        }
+
+        .camera-autofocus-badge.active .camera-dot {
+            background: var(--sage-forest);
+            animation: pulse-camera 1.6s infinite;
+        }
+
+        .camera-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            display: inline-block;
+        }
+
+        @keyframes pulse-camera {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.5; }
+        }
+
+        /* TOAST FLOTANTE DE NOTIFICACIÓN DE SISMO ENFOCADO */
+        .camera-focus-toast {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-10px);
+            background: #ffffff;
+            border: 1px solid var(--terracotta);
+            border-left: 4px solid var(--terracotta);
+            padding: 8px 16px;
+            border-radius: 6px;
+            box-shadow: var(--shadow-lift);
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 900;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .camera-focus-toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
         }
 
         .filter-pill-bar {
             display: flex;
-            background: var(--bg-panel);
-            border: 1px solid var(--border-subtle);
+            background: #ffffff;
+            border: 1px solid var(--border-card);
             border-radius: 6px;
             padding: 3px;
             gap: 3px;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+            box-shadow: var(--shadow-card);
         }
 
         .filter-btn {
@@ -597,7 +661,7 @@
             border: none;
             color: var(--text-secondary);
             font-family: var(--font-mono);
-            font-size: 0.65rem;
+            font-size: 0.66rem;
             font-weight: 700;
             padding: 4px 9px;
             border-radius: 4px;
@@ -606,24 +670,24 @@
         }
 
         .filter-btn:hover {
-            background: var(--bg-surface-elevated);
-            color: #ffffff;
+            background: var(--bg-subtle);
+            color: var(--text-primary);
         }
 
         .filter-btn.active {
-            background: var(--bg-surface-elevated);
-            color: var(--magma-light);
-            border: 1px solid var(--border-tactical);
+            background: var(--bg-card-elevated);
+            color: var(--terracotta);
+            border: 1px solid rgba(194, 65, 12, 0.3);
         }
 
         .map-crosshair {
             position: absolute;
             bottom: 14px;
             left: 14px;
-            background: var(--bg-panel);
-            border: 1px solid var(--border-subtle);
+            background: #ffffff;
+            border: 1px solid var(--border-card);
             border-radius: 4px;
-            padding: 4px 8px;
+            padding: 4px 9px;
             font-family: var(--font-mono);
             font-size: 0.65rem;
             color: var(--text-secondary);
@@ -631,6 +695,7 @@
             align-items: center;
             gap: 6px;
             z-index: 800;
+            box-shadow: var(--shadow-soft);
         }
 
         .map-hud-bottom-right {
@@ -639,20 +704,20 @@
         }
 
         .map-legend {
-            background: var(--bg-panel);
-            border: 1px solid var(--border-subtle);
+            background: #ffffff;
+            border: 1px solid var(--border-card);
             border-radius: 6px;
-            padding: 8px 12px;
+            padding: 9px 13px;
             font-family: var(--font-mono);
             font-size: 0.65rem;
             display: flex;
             flex-direction: column;
-            gap: 5px;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+            gap: 6px;
+            box-shadow: var(--shadow-card);
         }
 
         .legend-title {
-            color: var(--magma-light);
+            color: var(--terracotta);
             font-weight: 700;
             font-size: 0.62rem;
             letter-spacing: 0.5px;
@@ -662,13 +727,13 @@
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
             color: var(--text-secondary);
         }
 
         .legend-dot {
-            width: 8px;
-            height: 8px;
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
             display: inline-block;
         }
@@ -676,7 +741,7 @@
         .legend-line {
             width: 14px;
             height: 2px;
-            background: #f43f5e;
+            background: var(--terracotta);
             display: inline-block;
             border-bottom: 1px dashed #ffffff;
         }
@@ -685,7 +750,7 @@
            PANEL DERECHO: CHARTS Y CUADRÍCULAS CRÍTICAS
            ========================================================================== */
         .chart-card {
-            background: var(--bg-surface);
+            background: #ffffff;
             border: 1px solid var(--border-subtle);
             border-radius: 6px;
             padding: 10px;
@@ -698,7 +763,7 @@
             overflow-y: auto;
             border: 1px solid var(--border-subtle);
             border-radius: 6px;
-            background: var(--bg-surface);
+            background: #ffffff;
         }
 
         .tactical-table {
@@ -709,7 +774,7 @@
         }
 
         .tactical-table th {
-            background: #152033;
+            background: var(--bg-card-elevated);
             color: var(--text-muted);
             font-family: var(--font-mono);
             font-weight: 700;
@@ -724,64 +789,65 @@
 
         .tactical-table td {
             padding: 8px 10px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+            border-bottom: 1px solid var(--border-subtle);
             color: var(--text-secondary);
             font-family: var(--font-mono);
         }
 
         .tactical-table tr:hover td {
-            background: var(--bg-surface-elevated);
-            color: #ffffff;
+            background: var(--bg-card-elevated);
+            color: var(--text-primary);
         }
 
         .badge-alert {
             font-family: var(--font-mono);
             font-size: 0.62rem;
             font-weight: 800;
-            padding: 2px 5px;
+            padding: 2px 6px;
             border-radius: 3px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
         .badge-alert.critico {
-            background: rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
-            border: 1px solid rgba(239, 68, 68, 0.5);
+            background: var(--crimson-soft);
+            color: var(--crimson-earth);
+            border: 1px solid rgba(185, 28, 28, 0.4);
         }
 
         .badge-alert.moderado {
-            background: rgba(245, 158, 11, 0.2);
-            color: #fde68a;
-            border: 1px solid rgba(245, 158, 11, 0.5);
+            background: var(--ochre-soft);
+            color: var(--ochre-warm);
+            border: 1px solid rgba(180, 83, 9, 0.4);
         }
 
         .badge-alert.estable {
-            background: rgba(16, 185, 129, 0.2);
-            color: #6ee7b7;
-            border: 1px solid rgba(16, 185, 129, 0.5);
+            background: var(--sage-soft);
+            color: var(--sage-forest);
+            border: 1px solid rgba(22, 101, 52, 0.4);
         }
 
         /* ==========================================================================
-           3. SISMÓGRAFO DIGITAL INFERIOR
+           3. SISMÓGRAFO DE CAMPO EN TONO PERGAMINO / ARENA
            ========================================================================== */
         footer.seismograph-bar {
-            height: 36px;
-            background: #111a28;
+            height: 38px;
+            background: #ffffff;
             border-top: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
-            padding: 0 14px;
+            padding: 0 16px;
             gap: 14px;
             z-index: 1000;
             flex-shrink: 0;
+            box-shadow: 0 -2px 8px rgba(67, 56, 45, 0.04);
         }
 
         .seismo-label {
             font-family: var(--font-mono);
             font-size: 0.65rem;
             font-weight: 700;
-            color: var(--magma-light);
+            color: var(--terracotta);
             letter-spacing: 0.8px;
             white-space: nowrap;
         }
@@ -789,9 +855,9 @@
         .seismo-canvas-container {
             flex: 1;
             height: 24px;
-            background: #09101a;
-            border: 1px solid var(--border-subtle);
-            border-radius: 3px;
+            background: #fbf9f4;
+            border: 1px solid var(--border-card);
+            border-radius: 4px;
             overflow: hidden;
             position: relative;
         }
@@ -813,23 +879,23 @@
         }
 
         .seismo-metrics span strong {
-            color: #ffffff;
+            color: var(--text-primary);
         }
 
         /* ==========================================================================
-           4. BURBUJA FLOTANTE MOVIBLE DE GEOCOPILOT (DRAGGABLE CHAT BUBBLE)
+           4. BURBUJA FLOTANTE MOVIBLE DE GEOCOPILOT (ESTILO ARENA / TERRACOTA)
            ========================================================================== */
         .geocopilot-bubble {
             position: fixed;
-            bottom: 50px;
+            bottom: 52px;
             right: 24px;
             z-index: 1200;
             width: 54px;
             height: 54px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #22344f 0%, #152236 100%);
-            border: 2px solid var(--magma-primary);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 18px var(--magma-glow);
+            background: #ffffff;
+            border: 2px solid var(--terracotta);
+            box-shadow: 0 8px 24px rgba(67, 56, 45, 0.18), 0 0 12px rgba(194, 65, 12, 0.15);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -845,8 +911,7 @@
 
         .geocopilot-bubble:hover {
             transform: scale(1.08);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 24px rgba(249, 115, 22, 0.6);
-            border-color: var(--magma-light);
+            box-shadow: 0 12px 30px rgba(67, 56, 45, 0.24);
         }
 
         .bubble-pulse-ring {
@@ -854,13 +919,13 @@
             width: 100%;
             height: 100%;
             border-radius: 50%;
-            border: 2px solid var(--magma-primary);
-            animation: bubble-radar 2.5s infinite;
+            border: 2px solid var(--terracotta);
+            animation: bubble-radar 2.6s infinite;
             pointer-events: none;
         }
 
         @keyframes bubble-radar {
-            0% { transform: scale(1); opacity: 0.8; }
+            0% { transform: scale(1); opacity: 0.7; }
             100% { transform: scale(1.7); opacity: 0; }
         }
 
@@ -871,28 +936,27 @@
             width: 11px;
             height: 11px;
             border-radius: 50%;
-            background: var(--green-station);
-            border: 2px solid #152236;
-            box-shadow: 0 0 6px var(--green-station);
+            background: var(--sage-forest);
+            border: 2px solid #ffffff;
         }
 
         .bubble-tooltip {
             position: absolute;
             right: 64px;
-            background: var(--bg-panel);
-            border: 1px solid var(--border-tactical);
-            color: var(--magma-light);
+            background: #ffffff;
+            border: 1px solid var(--border-card);
+            color: var(--terracotta);
             font-family: var(--font-mono);
             font-size: 0.65rem;
             font-weight: 700;
-            padding: 5px 9px;
-            border-radius: 4px;
+            padding: 5px 10px;
+            border-radius: 5px;
             white-space: nowrap;
             pointer-events: none;
             opacity: 0;
             transform: translateX(6px);
             transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            box-shadow: var(--shadow-card);
         }
 
         .geocopilot-bubble:hover .bubble-tooltip {
@@ -901,20 +965,20 @@
         }
 
         /* ==========================================================================
-           VENTANA MODAL DE CHAT GEOCOPILOT (DRAGGABLE & RESIZABLE)
+           VENTANA MODAL DE CHAT GEOCOPILOT (ESTILO EDITORIAL ARENA & LINO)
            ========================================================================== */
         .chat-window {
             position: fixed;
-            bottom: 114px;
+            bottom: 116px;
             right: 24px;
             width: 470px;
             max-width: calc(100vw - 36px);
             height: 570px;
             max-height: calc(100vh - 130px);
-            background: rgba(19, 30, 46, 0.98);
-            border: 1px solid var(--border-tactical);
+            background: #ffffff;
+            border: 1px solid var(--border-card);
             border-radius: 8px;
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(249, 115, 22, 0.15);
+            box-shadow: var(--shadow-lift);
             z-index: 1300;
             display: flex;
             flex-direction: column;
@@ -929,8 +993,8 @@
         }
 
         .chat-console-header {
-            padding: 10px 14px;
-            background: #172437;
+            padding: 11px 16px;
+            background: var(--bg-card-elevated);
             border-bottom: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
@@ -947,7 +1011,7 @@
             font-family: var(--font-mono);
             font-size: 0.72rem;
             font-weight: 800;
-            color: var(--magma-light);
+            color: var(--terracotta);
             letter-spacing: 0.5px;
             display: flex;
             align-items: center;
@@ -957,8 +1021,8 @@
         .console-drag-hint {
             font-size: 0.58rem;
             color: var(--text-muted);
-            background: rgba(255, 255, 255, 0.08);
-            padding: 1px 5px;
+            background: var(--bg-subtle);
+            padding: 1px 6px;
             border-radius: 3px;
         }
 
@@ -968,9 +1032,9 @@
         }
 
         .console-btn {
-            background: transparent;
+            background: #ffffff;
             border: 1px solid var(--border-subtle);
-            color: var(--text-muted);
+            color: var(--text-secondary);
             width: 26px;
             height: 26px;
             border-radius: 4px;
@@ -984,9 +1048,9 @@
         }
 
         .console-btn:hover {
-            background: rgba(255, 255, 255, 0.12);
-            color: #ffffff;
-            border-color: var(--text-secondary);
+            background: var(--bg-subtle);
+            color: var(--text-primary);
+            border-color: var(--text-muted);
         }
 
         .chat-thread {
@@ -998,37 +1062,38 @@
             gap: 10px;
             font-size: 0.8rem;
             line-height: 1.5;
-            background: #111a28;
+            background: #fcfbf9;
         }
 
         .chat-msg {
             max-width: 92%;
             padding: 10px 12px;
-            border-radius: 5px;
+            border-radius: 6px;
             word-break: break-word;
         }
 
         .chat-msg.agent {
             align-self: flex-start;
-            background: #172437;
-            border: 1px solid rgba(249, 115, 22, 0.25);
-            border-left: 3px solid var(--magma-primary);
-            color: #e2e8f0;
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-left: 3px solid var(--terracotta);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-soft);
         }
 
         .chat-msg.user {
             align-self: flex-end;
-            background: #22344f;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: #ffffff;
-            font-weight: 500;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-card);
+            color: var(--text-primary);
+            font-weight: 600;
         }
 
         .msg-meta {
             font-family: var(--font-mono);
             font-size: 0.62rem;
             font-weight: 700;
-            color: var(--magma-light);
+            color: var(--terracotta);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 4px;
@@ -1040,13 +1105,13 @@
             gap: 6px;
             margin-top: 8px;
             padding-top: 8px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid var(--border-subtle);
         }
 
         .prompt-pill {
-            background: rgba(234, 88, 12, 0.12);
-            border: 1px solid rgba(234, 88, 12, 0.3);
-            color: var(--magma-light);
+            background: var(--bg-card-elevated);
+            border: 1px solid var(--border-card);
+            color: var(--text-secondary);
             font-family: var(--font-mono);
             font-size: 0.68rem;
             font-weight: 600;
@@ -1057,14 +1122,14 @@
         }
 
         .prompt-pill:hover {
-            background: var(--magma-primary);
+            background: var(--terracotta);
             color: #ffffff;
-            border-color: var(--magma-primary);
+            border-color: var(--terracotta);
         }
 
         .chat-input-row {
-            padding: 10px;
-            background: #141e2d;
+            padding: 10px 14px;
+            background: #ffffff;
             border-top: 1px solid var(--border-subtle);
             display: flex;
             gap: 8px;
@@ -1073,8 +1138,8 @@
         .chat-input-row input {
             flex: 1;
             background: var(--bg-input);
-            border: 1px solid var(--border-subtle);
-            color: #ffffff;
+            border: 1px solid var(--border-card);
+            color: var(--text-primary);
             font-family: var(--font-mono);
             font-size: 0.78rem;
             padding: 8px 12px;
@@ -1083,34 +1148,34 @@
         }
 
         .chat-input-row input:focus {
-            border-color: var(--magma-primary);
-            box-shadow: 0 0 8px var(--magma-glow);
+            border-color: var(--terracotta);
+            background: #ffffff;
         }
 
         .chat-input-row button {
-            background: var(--magma-primary);
+            background: var(--terracotta);
             border: none;
             color: #ffffff;
             font-family: var(--font-mono);
             font-size: 0.72rem;
             font-weight: 700;
-            padding: 0 14px;
+            padding: 0 16px;
             border-radius: 4px;
             cursor: pointer;
             transition: background 0.15s;
         }
 
         .chat-input-row button:hover {
-            background: var(--magma-light);
+            background: var(--clay-dark);
         }
 
         .typing-bar {
             padding: 6px 14px;
-            background: #141e2d;
+            background: var(--bg-card-elevated);
             border-top: 1px solid var(--border-subtle);
             font-family: var(--font-mono);
             font-size: 0.65rem;
-            color: var(--magma-light);
+            color: var(--terracotta);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -1130,11 +1195,11 @@
 <body>
 
     <!-- ==========================================================================
-         1. TOP TELEMETRY HUD BAR
+         1. TOP TELEMETRY HUD BAR (ESTILO EDITORIAL ARENA Y MARFIL)
          ========================================================================== -->
     <header class="hud-header">
         <div class="hud-brand">
-            <span class="hud-badge">LAMBDA OBSERVATORY</span>
+            <span class="hud-badge">OBSERVATORIO DE CAMPO</span>
             <div class="hud-title">
                 SISTEMA DE MONITOREO SÍSMICO GLOBAL
                 <span>// SERVING LAYER POSTGRESQL</span>
@@ -1143,11 +1208,11 @@
 
         <div class="hud-telemetry-strip">
             <div class="telemetry-item">
-                <span class="status-indicator online" id="status-postgres-dot"></span>
+                <span class="status-dot online" id="status-postgres-dot"></span>
                 <span>SERVING DB: <strong id="postgres-status-text">10.175.132.248:5432</strong></span>
             </div>
             <div class="telemetry-item">
-                <span class="status-indicator online"></span>
+                <span class="status-dot online"></span>
                 <span>INGESTA: <strong id="pipeline-status">KAFKA + AIRFLOW</strong></span>
             </div>
             <div class="telemetry-item">
@@ -1157,7 +1222,7 @@
         </div>
 
         <div class="hud-controls">
-            <button class="hud-btn hud-btn-danger" onclick="inyectarSismoPrueba()" title="Inyecta evento sísmico en tiempo real">
+            <button class="hud-btn hud-btn-danger" onclick="inyectarSismoPrueba()" title="Inyecta evento sísmico y enfoca cámara automáticamente">
                 <svg class="icon-svg" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                 <span>SIMULAR SISMO</span>
             </button>
@@ -1173,7 +1238,7 @@
     </header>
 
     <!-- ==========================================================================
-         2. MAIN OPERATIONS GRID (3 COLUMNAS)
+         2. MAIN OPERATIONS GRID (3 COLUMNAS TIERRA Y ARENA)
          ========================================================================== -->
     <main class="operations-grid" id="main-grid-container">
 
@@ -1182,7 +1247,7 @@
             <div class="panel-section">
                 <div class="section-header">
                     <span class="section-label">TELEMETRÍA PRIMARIA // KPIS</span>
-                    <span style="font-family: var(--font-mono); font-size: 0.63rem; color: var(--green-station);">CONEXIÓN ACTIVA</span>
+                    <span style="font-family: var(--font-mono); font-size: 0.63rem; color: var(--sage-forest); font-weight: 700;">EN LÍNEA</span>
                 </div>
                 <div class="metrics-grid">
                     <div class="gauge-card">
@@ -1197,12 +1262,12 @@
                     </div>
                     <div class="gauge-card">
                         <span class="gauge-label">ALERTAS TSUNAMI</span>
-                        <span class="gauge-value" id="kpi-total-tsunamis" style="color: var(--trench-cyan);">0</span>
+                        <span class="gauge-value" id="kpi-total-tsunamis" style="color: var(--river-slate);">0</span>
                         <span class="gauge-sub">BOYAS ACTIVADAS</span>
                     </div>
                     <div class="gauge-card">
                         <span class="gauge-label">PELIGROSOS (M ≥ 5)</span>
-                        <span class="gauge-value" id="kpi-sismos-m5" style="color: var(--amber-seismic);">0</span>
+                        <span class="gauge-value" id="kpi-sismos-m5" style="color: var(--ochre-warm);">0</span>
                         <span class="gauge-sub">ALTO IMPACTO</span>
                     </div>
                 </div>
@@ -1210,8 +1275,8 @@
                 <!-- DESGLOSE LAMBDA: STREAMING VS BATCH -->
                 <div class="lambda-split-bar">
                     <div class="split-bar-header">
-                        <span style="color: var(--trench-cyan);">STREAMING: <strong id="lambda-stream-count">0</strong></span>
-                        <span style="color: #c084fc;">BATCH: <strong id="lambda-batch-count">0</strong></span>
+                        <span style="color: var(--river-slate);">STREAMING: <strong id="lambda-stream-count">0</strong></span>
+                        <span style="color: #7e22ce;">BATCH: <strong id="lambda-batch-count">0</strong></span>
                     </div>
                     <div class="split-progress">
                         <div class="split-fill-stream" id="split-stream-bar" style="width: 50%;"></div>
@@ -1224,7 +1289,7 @@
             <div class="stream-feed-container">
                 <div class="feed-header-bar">
                     <span class="section-label">REGISTRO SÍSMICO EN TIEMPO REAL</span>
-                    <span style="font-family: var(--font-mono); font-size: 0.63rem; color: var(--text-muted);" id="feed-count-badge">0 EVENTOS</span>
+                    <span style="font-family: var(--font-mono); font-size: 0.63rem; color: var(--text-muted); font-weight: 700;" id="feed-count-badge">0 EVENTOS</span>
                 </div>
                 <div class="feed-list" id="seismic-feed-list">
                     <!-- Eventos inyectados dinámicamente -->
@@ -1232,9 +1297,15 @@
             </div>
         </aside>
 
-        <!-- PANEL CENTRAL: MAPA SÍSMICO CON CAPAS LIBRES (NO API KEYS REQUERIDAS) -->
+        <!-- PANEL CENTRAL: MAPA SÍSMICO EDITORIAL (CON AUTO-ENFOQUE DE CÁMARA) -->
         <section class="map-center-container">
             <div id="seismic-map"></div>
+
+            <!-- TOAST DE NOTIFICACIÓN DE CÁMARA ENFOCADA -->
+            <div class="camera-focus-toast" id="camera-focus-toast">
+                <svg class="icon-svg" style="color: var(--terracotta);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+                <span id="camera-toast-text">ENFOCANDO EPICENTRO DEL SISMO...</span>
+            </div>
 
             <!-- OVERLAY TOP-LEFT: FILTROS DE MAGNITUD -->
             <div class="map-overlay-hud map-hud-top-left">
@@ -1246,17 +1317,18 @@
                 </div>
             </div>
 
-            <!-- OVERLAY TOP-RIGHT: SELECTOR DE MAPA LIBRE (ZERO API KEY) -->
+            <!-- OVERLAY TOP-RIGHT: SELECTOR DE CAPAS Y TOGGLE DE ENFOQUE DE CÁMARA -->
             <div class="map-overlay-hud map-hud-top-right">
                 <div class="basemap-switcher-bar">
-                    <button class="basemap-btn active" id="btn-map-topo" onclick="cambiarCapaMapa('topo')">TOPOGRÁFICO</button>
-                    <button class="basemap-btn" id="btn-map-sat" onclick="cambiarCapaMapa('sat')">SATELITAL</button>
-                    <button class="basemap-btn" id="btn-map-ocean" onclick="cambiarCapaMapa('ocean')">FOSAS OCEÁNICAS</button>
+                    <button class="basemap-btn active" id="btn-map-voyager" onclick="cambiarCapaMapa('voyager')">PERGAMINO VOYAGER</button>
+                    <button class="basemap-btn" id="btn-map-topo" onclick="cambiarCapaMapa('topo')">RELIEVE TOPO</button>
+                    <button class="basemap-btn" id="btn-map-sat" onclick="cambiarCapaMapa('sat')">SATELITAL REAL</button>
                     <button class="basemap-btn" id="btn-map-osm" onclick="cambiarCapaMapa('osm')">OPENSTREETMAP</button>
                 </div>
-                <div class="no-api-badge">
-                    <svg class="icon-svg" style="width: 12px; height: 12px;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    <span>CARTOGRAFÍA LIBRE // CERO API KEYS</span>
+                
+                <div class="camera-autofocus-badge active" id="btn-camera-autofocus" onclick="toggleCamaraAutofocus()" title="Activar/desactivar auto-enfoque automático al llegar un sismo">
+                    <span class="camera-dot"></span>
+                    <span id="camera-autofocus-label">CÁMARA AUTO-ENFOQUE: ACTIVA</span>
                 </div>
             </div>
 
@@ -1272,15 +1344,15 @@
                         <span>Fallas Tectónicas Mayores</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-dot" style="background: var(--crimson-hazard);"></span>
+                        <span class="legend-dot" style="background: var(--crimson-earth);"></span>
                         <span>Superficial (&lt; 15 km) - Alto Impacto</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-dot" style="background: var(--amber-seismic);"></span>
+                        <span class="legend-dot" style="background: var(--ochre-warm);"></span>
                         <span>Intermedia (15 a 70 km)</span>
                     </div>
                     <div class="legend-item">
-                        <span class="legend-dot" style="background: var(--trench-cyan);"></span>
+                        <span class="legend-dot" style="background: var(--river-slate);"></span>
                         <span>Profunda (&gt; 70 km)</span>
                     </div>
                 </div>
@@ -1292,7 +1364,7 @@
             <div class="panel-section">
                 <div class="section-header">
                     <span class="section-label">TOP REGIONES SÍSMICAS (GOLD 1)</span>
-                    <span style="font-family: var(--font-mono); font-size: 0.63rem; color: var(--text-muted);">VOLUMEN ACUMULADO</span>
+                    <span style="font-family: var(--font-mono); font-size: 0.63rem; color: var(--text-muted); font-weight: 600;">VOLUMEN ACUMULADO</span>
                 </div>
                 <div class="chart-card">
                     <canvas id="chart-top-paises"></canvas>
@@ -1302,7 +1374,7 @@
             <div class="panel-section" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
                 <div class="section-header">
                     <span class="section-label">CUADRÍCULAS CRÍTICAS (GOLD 2)</span>
-                    <span style="font-family: var(--font-mono); font-size: 0.63rem; color: var(--magma-light);" id="total-grid-cells">0 ZONAS</span>
+                    <span style="font-family: var(--font-mono); font-size: 0.63rem; color: var(--terracotta); font-weight: 700;" id="total-grid-cells">0 ZONAS</span>
                 </div>
                 <div class="table-wrap">
                     <table class="tactical-table">
@@ -1325,17 +1397,17 @@
     </main>
 
     <!-- ==========================================================================
-         3. SISMÓGRAFO DIGITAL INFERIOR
+         3. SISMÓGRAFO DE CAMPO EN TONO PERGAMINO / ARENA
          ========================================================================== -->
     <footer class="seismograph-bar">
-        <span class="seismo-label">OSCILOGRAMA DIGITAL // P-WAVE &amp; S-WAVE MONITOR</span>
+        <span class="seismo-label">OSCILOGRAMA ANALÓGICO // P-WAVE &amp; S-WAVE MONITOR</span>
         <div class="seismo-canvas-container">
             <canvas id="seismograph-canvas"></canvas>
         </div>
         <div class="seismo-metrics">
             <span>FREC: <strong id="seismo-freq">12.4 Hz</strong></span>
             <span>AMPLITUD: <strong id="seismo-amp">0.14 mm</strong></span>
-            <span>ESTADO: <strong id="seismo-alert-status" style="color: var(--green-station);">NOMINAL</strong></span>
+            <span>ESTADO: <strong id="seismo-alert-status" style="color: var(--sage-forest);">ESTABLE</strong></span>
         </div>
     </footer>
 
@@ -1345,7 +1417,7 @@
     <div class="geocopilot-bubble" id="geocopilot-movable-bubble" title="GeoCopilot IA // Haz clic para abrir, arrastra para mover">
         <div class="bubble-pulse-ring"></div>
         <span class="bubble-indicator"></span>
-        <svg class="icon-svg" style="width: 26px; height: 26px; stroke: #fb923c;" viewBox="0 0 24 24">
+        <svg class="icon-svg" style="width: 26px; height: 26px; stroke: var(--terracotta);" viewBox="0 0 24 24">
             <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
             <path d="M2 12h4l3-6 4 12 3-6h6"/>
         </svg>
@@ -1370,9 +1442,9 @@
         <div class="chat-thread" id="chat-thread-container">
             <div class="chat-msg agent">
                 <div class="msg-meta">[SISTEMA] GEOCOPILOT SÍSMICO RAG // ACTIVO</div>
-                Terminal analítica sismológica conectada en tiempo real al Serving Layer de PostgreSQL.
+                Terminal analítica de geociencias conectada en tiempo real al Serving Layer de PostgreSQL.
                 <br><br>
-                Seleccione una directiva técnica o ingrese una consulta:
+                Seleccione una directiva o ingrese una consulta técnica:
                 <div class="prompt-pills">
                     <button class="prompt-pill" onclick="enviarPrompt('Evaluar riesgo sísmico y alertas de tsunami actuales')">[DIAGNÓSTICO DE RIESGO]</button>
                     <button class="prompt-pill" onclick="enviarPrompt('Generar boletín oficial de situación para Protección Civil')">[BOLETÍN OFICIAL]</button>
@@ -1383,7 +1455,7 @@
         </div>
 
         <div class="typing-bar" id="chat-typing-indicator" style="display: none;">
-            <span class="status-indicator online"></span>
+            <span class="status-dot online"></span>
             <span>CONSULTANDO MODELO GEMINI CON CONTEXTO DE SERVING LAYER...</span>
         </div>
 
@@ -1394,7 +1466,7 @@
     </div>
 
     <!-- ==========================================================================
-         5. SCRIPTS Y LÓGICA DE CONTROL
+         5. SCRIPTS Y LÓGICA DE CONTROL (CON CÁMARA AUTO-ENFOQUE INTELIGENTE)
          ========================================================================== -->
     <script>
         // ESTADO GLOBAL DE LA SALA DE CONTROL
@@ -1407,9 +1479,18 @@
         let filtroMinMag = 0;
         let audioAlarmEnabled = false;
         let audioContext = null;
+        let autoFocusCamera = true;
+        let ultimoSismoIdRegistrado = null;
+        const markersMap = new Map(); // Mapa de referencias cuadrícula -> marcador Leaflet
 
-        // CATÁLOGO DE CAPAS PÚBLICAS Y LIBRES (100% CERO API KEYS REQUERIDAS)
+        // CATÁLOGO DE MAPAS LIBRES (100% CERO API KEYS REQUERIDAS)
+        // Optimizadas para estilo Beige / Pergamino / Arena
         const CAPAS_MAPA = {
+            voyager: {
+                url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; CartoDB &copy; OpenStreetMap',
+                maxZoom: 19
+            },
             topo: {
                 url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
                 attribution: '&copy; Esri, USGS, NOAA',
@@ -1419,11 +1500,6 @@
                 url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                 attribution: '&copy; Esri, Maxar, Earthstar Geographics',
                 maxZoom: 18
-            },
-            ocean: {
-                url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
-                attribution: '&copy; Esri, GEBCO, NOAA, National Geographic',
-                maxZoom: 16
             },
             osm: {
                 url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -1441,7 +1517,7 @@
         setInterval(actualizarRelojUTC, 1000);
         actualizarRelojUTC();
 
-        // INICIALIZACIÓN DEL MAPA CON CAPA TOPOGRÁFICA LIBRE
+        // INICIALIZACIÓN DEL MAPA CON CAPA VOYAGER (PERGAMINO BEIGE NATURAL)
         function initMap() {
             map = L.map('seismic-map', {
                 center: [20.0, 0.0],
@@ -1453,23 +1529,24 @@
 
             L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
-            // Capa inicial: Esri World Topo Map (Terreno geológico natural, cero API keys)
-            currentTileLayer = L.tileLayer(CAPAS_MAPA.topo.url, {
-                attribution: CAPAS_MAPA.topo.attribution,
-                maxZoom: CAPAS_MAPA.topo.maxZoom
+            // Capa por defecto: CartoDB Voyager (tonos beige, papel y arena cálida, sin API key)
+            currentTileLayer = L.tileLayer(CAPAS_MAPA.voyager.url, {
+                attribution: CAPAS_MAPA.voyager.attribution,
+                subdomains: 'abcd',
+                maxZoom: CAPAS_MAPA.voyager.maxZoom
             }).addTo(map);
 
             markersLayer = L.layerGroup().addTo(map);
 
-            // Cargar límites de Placas Tectónicas locales
+            // Cargar límites de Placas Tectónicas locales en tono terracota elegante
             fetch('/static/tectonic_plates.json')
                 .then(res => res.json())
                 .then(data => {
                     tectonicLayer = L.geoJSON(data, {
                         style: {
-                            color: '#f43f5e',
+                            color: '#c2410c',
                             weight: 1.6,
-                            opacity: 0.8,
+                            opacity: 0.75,
                             dashArray: '4, 4'
                         }
                     }).addTo(map);
@@ -1488,31 +1565,70 @@
         function cambiarCapaMapa(tipo) {
             if (!CAPAS_MAPA[tipo] || !map) return;
 
-            // Actualizar botones visuales
             document.querySelectorAll('.basemap-btn').forEach(btn => btn.classList.remove('active'));
-            const btnId = tipo === 'topo' ? 'btn-map-topo' : tipo === 'sat' ? 'btn-map-sat' : tipo === 'ocean' ? 'btn-map-ocean' : 'btn-map-osm';
+            const btnId = tipo === 'voyager' ? 'btn-map-voyager' : tipo === 'topo' ? 'btn-map-topo' : tipo === 'sat' ? 'btn-map-sat' : 'btn-map-osm';
             const btn = document.getElementById(btnId);
             if (btn) btn.classList.add('active');
 
-            // Reemplazar capa
             if (currentTileLayer) {
                 map.removeLayer(currentTileLayer);
             }
             currentTileLayer = L.tileLayer(CAPAS_MAPA[tipo].url, {
                 attribution: CAPAS_MAPA[tipo].attribution,
+                subdomains: CAPAS_MAPA[tipo].subdomains || 'abc',
                 maxZoom: CAPAS_MAPA[tipo].maxZoom
             }).addTo(map);
 
-            // Asegurar que las capas de sismos y placas sigan en el tope visual
             if (tectonicLayer) tectonicLayer.bringToFront();
             if (markersLayer) markersLayer.bringToFront();
         }
 
-        // CÓDIGO DE COLOR SEGÚN PROFUNDIDAD SÍSMICA
+        // CONTROL DE AUTO-ENFOQUE DE CÁMARA
+        function toggleCamaraAutofocus() {
+            autoFocusCamera = !autoFocusCamera;
+            const badge = document.getElementById('btn-camera-autofocus');
+            const label = document.getElementById('camera-autofocus-label');
+            if (autoFocusCamera) {
+                badge.classList.add('active');
+                label.innerText = 'CÁMARA AUTO-ENFOQUE: ACTIVA';
+            } else {
+                badge.classList.remove('active');
+                label.innerText = 'CÁMARA AUTO-ENFOQUE: MANUAL';
+            }
+        }
+
+        // MOSTRAR TOAST Y ENFOCAR EPICENTRO
+        function enfocarEpicentroEnMapa(lat, lon, lugar, mag) {
+            if (!autoFocusCamera || !map) return;
+
+            // Mostrar toast elegante
+            const toast = document.getElementById('camera-focus-toast');
+            const toastText = document.getElementById('camera-toast-text');
+            toastText.innerHTML = `<strong>NUEVO EVENTO DETECTADO:</strong> ${lugar} (M ${mag.toFixed(1)}) &mdash; Enfocando epicentro`;
+            toast.classList.add('visible');
+            setTimeout(() => toast.classList.remove('visible'), 4000);
+
+            // Mover cámara suavemente con zoom al epicentro
+            map.flyTo([lat, lon], 6.5, {
+                duration: 1.8,
+                easeLinearity: 0.25
+            });
+
+            // Abrir popup tras la llegada de la cámara
+            setTimeout(() => {
+                const key = `${lat.toFixed(1)},${lon.toFixed(1)}`;
+                const marker = markersMap.get(key);
+                if (marker) {
+                    marker.openPopup();
+                }
+            }, 1900);
+        }
+
+        // CÓDIGO DE COLOR SEGÚN PROFUNDIDAD SÍSMICA (TONOS TIERRA Y ROCA)
         function getColorByDepth(depth) {
-            if (depth <= 15) return '#ef4444'; // Superficial
-            if (depth <= 70) return '#f59e0b'; // Intermedio
-            return '#38bdf8';                  // Profundo
+            if (depth <= 15) return '#b91c1c'; // Superficial (Rojo arcilla profundo)
+            if (depth <= 70) return '#b45309'; // Intermedio (Ocre cálido)
+            return '#0369a1';                  // Profundo (Azul cuarzo/fluvial)
         }
 
         // ACTUALIZACIÓN DE DATOS DESDE POSTGRESQL SERVING LAYER
@@ -1542,11 +1658,11 @@
 
                     if (kpis.total_criticas > 0) {
                         document.getElementById('total-grid-cells').innerText = `${kpis.total_criticas} CRÍTICAS`;
-                        document.getElementById('seismo-alert-status').innerText = 'ALERTA TECTÓNICA';
-                        document.getElementById('seismo-alert-status').style.color = '#ef4444';
+                        document.getElementById('seismo-alert-status').innerText = 'ALERTA SÍSMICA';
+                        document.getElementById('seismo-alert-status').style.color = 'var(--crimson-earth)';
                     } else {
-                        document.getElementById('seismo-alert-status').innerText = 'NOMINAL';
-                        document.getElementById('seismo-alert-status').style.color = 'var(--green-station)';
+                        document.getElementById('seismo-alert-status').innerText = 'ESTABLE';
+                        document.getElementById('seismo-alert-status').style.color = 'var(--sage-forest)';
                     }
                 }
 
@@ -1564,13 +1680,13 @@
                     renderizarGraficoPaises(paises);
                 }
 
-                document.getElementById('postgres-status-text').innerText = 'CONECTADO // 10.175.132.248:5432';
-                document.getElementById('status-postgres-dot').className = 'status-indicator online';
+                document.getElementById('postgres-status-text').innerText = '10.175.132.248:5432 (CONECTADO)';
+                document.getElementById('status-postgres-dot').className = 'status-dot online';
 
             } catch (err) {
                 console.error('Error sincronizando telemetría:', err);
                 document.getElementById('postgres-status-text').innerText = 'RECONECTANDO...';
-                document.getElementById('status-postgres-dot').className = 'status-indicator hazard';
+                document.getElementById('status-postgres-dot').className = 'status-dot hazard';
             }
         }
 
@@ -1578,6 +1694,7 @@
         function renderizarMarcadoresYTabla() {
             if (!markersLayer) return;
             markersLayer.clearLayers();
+            markersMap.clear();
 
             const feedContainer = document.getElementById('seismic-feed-list');
             const tbody = document.getElementById('tabla-zonas-body');
@@ -1595,29 +1712,33 @@
                 const lon = parseFloat(zona.cuadricula_lon);
                 const prof = parseFloat(zona.profundidad_promedio_km) || 10.0;
                 const color = getColorByDepth(prof);
-                const radius = Math.max(6, Math.pow(mag, 1.8) * 1.5);
+                const radius = Math.max(7, Math.pow(mag, 1.8) * 1.5);
 
-                // Marcador circular en mapa
+                // Marcador circular sobre el mapa beige
                 const circle = L.circleMarker([lat, lon], {
                     radius: radius,
                     fillColor: color,
                     color: '#ffffff',
-                    weight: 1.5,
-                    opacity: 0.9,
-                    fillOpacity: 0.75
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.85
                 });
 
                 const popupHtml = `
-                    <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #1e293b;">
-                        <strong style="color: #0f172a; font-size: 0.8rem;">${zona.zona_referencia}</strong><br>
-                        <span style="display:inline-block; margin-top:4px;">MAGNITUD: <strong>${mag.toFixed(1)} M</strong></span><br>
+                    <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #29241e; padding: 2px;">
+                        <strong style="color: var(--terracotta); font-size: 0.82rem;">${zona.zona_referencia}</strong><br>
+                        <span style="display:inline-block; margin-top:5px;">MAGNITUD: <strong>${mag.toFixed(1)} M</strong></span><br>
                         <span>PROFUNDIDAD: <strong>${prof.toFixed(1)} km</strong></span><br>
-                        <span>SISMOS ACUMULADOS: <strong>${zona.total_sismos_registrados}</strong></span><br>
-                        <span>ESTADO: <strong style="color: ${zona.nivel_alerta === 'CRITICO' ? '#ef4444' : '#f59e0b'};">${zona.nivel_alerta}</strong></span>
+                        <span>EVENTOS ACUMULADOS: <strong>${zona.total_sismos_registrados}</strong></span><br>
+                        <span>ESTADO: <strong style="color: ${zona.nivel_alerta === 'CRITICO' ? '#b91c1c' : '#b45309'};">${zona.nivel_alerta}</strong></span>
                     </div>
                 `;
                 circle.bindPopup(popupHtml);
                 markersLayer.addLayer(circle);
+
+                // Guardar en mapa de referencias
+                const key = `${lat.toFixed(1)},${lon.toFixed(1)}`;
+                markersMap.set(key, circle);
 
                 // Tarjeta en Feed Izquierdo
                 const card = document.createElement('div');
@@ -1626,18 +1747,18 @@
 
                 card.className = `seismic-event-card ${hazardClass}`;
                 card.onclick = () => {
-                    map.flyTo([lat, lon], 6, { duration: 1.2 });
+                    map.flyTo([lat, lon], 6.5, { duration: 1.5 });
                     circle.openPopup();
                 };
                 card.innerHTML = `
                     <div class="event-mag-pill ${pillClass}">
-                        ${mag.toFixed(1)}<br><span style="font-size:0.55rem;">MAG</span>
+                        ${mag.toFixed(1)}<br><span style="font-size:0.55rem; font-weight:700;">MAG</span>
                     </div>
                     <div class="event-info">
                         <span class="event-place">${zona.zona_referencia}</span>
                         <div class="event-meta">
                             <span>PROF: ${prof.toFixed(0)} km</span>
-                            <span>CUADRÍCULA: ${lat.toFixed(1)}°, ${lon.toFixed(1)}°</span>
+                            <span>COORD: ${lat.toFixed(1)}°, ${lon.toFixed(1)}°</span>
                         </div>
                     </div>
                 `;
@@ -1646,14 +1767,14 @@
                 // Fila en Tabla Derecha
                 const tr = document.createElement('tr');
                 tr.onclick = () => {
-                    map.flyTo([lat, lon], 6, { duration: 1.2 });
+                    map.flyTo([lat, lon], 6.5, { duration: 1.5 });
                     circle.openPopup();
                 };
                 const badgeClass = zona.nivel_alerta === 'CRITICO' ? 'critico' : (zona.nivel_alerta === 'MODERADO' ? 'moderado' : 'estable');
                 tr.innerHTML = `
                     <td><span class="badge-alert ${badgeClass}">${zona.nivel_alerta}</span></td>
                     <td style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${zona.zona_referencia}">${zona.zona_referencia}</td>
-                    <td style="text-align: right; font-weight: 700; color: ${mag >= 5 ? 'var(--crimson-hazard)' : '#ffffff'};">${mag.toFixed(1)}</td>
+                    <td style="text-align: right; font-weight: 700; color: ${mag >= 5 ? 'var(--crimson-earth)' : 'var(--text-primary)'};">${mag.toFixed(1)}</td>
                     <td style="text-align: right;">${zona.total_sismos_registrados}</td>
                 `;
                 tbody.appendChild(tr);
@@ -1670,7 +1791,7 @@
             renderizarMarcadoresYTabla();
         }
 
-        // RENDERIZADO DEL GRÁFICO TOP PAÍSES
+        // RENDERIZADO DEL GRÁFICO TOP PAÍSES (TONO TIERRA / TERRACOTA)
         function renderizarGraficoPaises(data) {
             const ctx = document.getElementById('chart-top-paises').getContext('2d');
             const labels = data.map(d => d.pais_estado || 'Indeterminado');
@@ -1690,8 +1811,8 @@
                     datasets: [{
                         label: 'Sismos',
                         data: values,
-                        backgroundColor: '#ea580c',
-                        borderColor: '#fb923c',
+                        backgroundColor: '#c2410c',
+                        borderColor: '#9a3412',
                         borderWidth: 1,
                         borderRadius: 3
                     }]
@@ -1705,19 +1826,19 @@
                     },
                     scales: {
                         x: {
-                            grid: { color: 'rgba(148, 163, 184, 0.1)' },
-                            ticks: { color: '#94a3b8', font: { family: 'monospace', size: 9 } }
+                            grid: { color: 'rgba(217, 207, 191, 0.4)' },
+                            ticks: { color: '#635b50', font: { family: 'monospace', size: 9 } }
                         },
                         y: {
                             grid: { display: false },
-                            ticks: { color: '#f8fafc', font: { family: 'sans-serif', size: 9 } }
+                            ticks: { color: '#29241e', font: { family: 'sans-serif', size: 9, weight: 'bold' } }
                         }
                     }
                 }
             });
         }
 
-        // INYECCIÓN DE SISMO DE PRUEBA (ENDPOINT REAL FASTAPI)
+        // INYECCIÓN DE SISMO DE PRUEBA (CON MOVIMIENTO AUTOMÁTICO DE CÁMARA)
         async function inyectarSismoPrueba() {
             try {
                 const res = await fetch('/api/simular-streaming', { method: 'POST' });
@@ -1725,7 +1846,15 @@
                     const data = await res.json();
                     reproducirAlertaSismica();
                     dispararEfectoTemblor();
-                    actualizarDatos();
+
+                    // Actualizar telemetría de inmediato
+                    await actualizarDatos();
+
+                    // MOVER CÁMARA AUTOMÁTICAMENTE HACIA EL NUEVO SISMO
+                    if (data.sismo) {
+                        const s = data.sismo;
+                        enfocarEpicentroEnMapa(s.lat, s.lon, s.zona || s.pais, s.magnitud);
+                    }
                 }
             } catch (err) {
                 console.error('Error inyectando sismo de simulación:', err);
@@ -1782,7 +1911,7 @@
         }
 
         // ==========================================================================
-        // SISMÓGRAFO DIGITAL (CANVAS OSCILOGRAMA)
+        // SISMÓGRAFO ANALÓGICO EN TONO PERGAMINO / TINTA TERRACOTA
         // ==========================================================================
         const canvas = document.getElementById('seismograph-canvas');
         const ctxCanvas = canvas.getContext('2d');
@@ -1803,7 +1932,6 @@
             const h = canvas.height;
             const centerY = h / 2;
 
-            // Simulación de oscilación de fondo con micro-sismos
             const noise = (Math.random() - 0.5) * 3;
             const wave = Math.sin(seismoPhase) * 2 + Math.cos(seismoPhase * 2.3) * 1.5;
             const newY = centerY + wave + noise;
@@ -1815,16 +1943,16 @@
 
             ctxCanvas.clearRect(0, 0, w, h);
 
-            // Línea central de referencia
-            ctxCanvas.strokeStyle = 'rgba(148, 163, 184, 0.15)';
+            // Rejilla de papel milimetrado sismológico
+            ctxCanvas.strokeStyle = '#e9dfd0';
             ctxCanvas.lineWidth = 1;
             ctxCanvas.beginPath();
             ctxCanvas.moveTo(0, centerY);
             ctxCanvas.lineTo(w, centerY);
             ctxCanvas.stroke();
 
-            // Traza de la onda sísmica
-            ctxCanvas.strokeStyle = '#38bdf8';
+            // Tinta de aguja sismográfica terracota
+            ctxCanvas.strokeStyle = '#c2410c';
             ctxCanvas.lineWidth = 1.4;
             ctxCanvas.beginPath();
 
@@ -1877,7 +2005,6 @@
                 let newX = bubbleInitLeft + dx;
                 let newY = bubbleInitTop + dy;
 
-                // Restricciones de pantalla
                 newX = Math.max(10, Math.min(window.innerWidth - 64, newX));
                 newY = Math.max(10, Math.min(window.innerHeight - 64, newY));
 
@@ -1893,7 +2020,6 @@
             isBubbleDragging = false;
             bubble.releasePointerCapture(e.pointerId);
 
-            // Si no fue un arrastre, ejecutar clic para alternar chat
             if (!bubbleMoved) {
                 toggleChatConsole();
             }
@@ -1905,7 +2031,7 @@
         let winInitLeft, winInitTop;
 
         chatHandle.addEventListener('pointerdown', (e) => {
-            if (e.target.closest('button')) return; // No arrastrar al hacer clic en botones
+            if (e.target.closest('button')) return;
             isWinDragging = true;
             winStartX = e.clientX;
             winStartY = e.clientY;
@@ -1925,7 +2051,6 @@
             let newX = winInitLeft + dx;
             let newY = winInitTop + dy;
 
-            // Mantener dentro del viewport
             newX = Math.max(10, Math.min(window.innerWidth - chatWin.offsetWidth - 10, newX));
             newY = Math.max(10, Math.min(window.innerHeight - chatWin.offsetHeight - 10, newY));
 
@@ -1945,7 +2070,6 @@
         function toggleChatConsole() {
             if (chatWin.style.display === 'none' || chatWin.style.display === '') {
                 chatWin.style.display = 'flex';
-                // Si la ventana no tiene coordenadas previas de arrastre, abrirla cerca de la burbuja
                 if (!chatWin.style.left && !chatWin.style.top) {
                     const bubbleRect = bubble.getBoundingClientRect();
                     const winW = 470;
@@ -1976,7 +2100,7 @@
             thread.innerHTML = `
                 <div class="chat-msg agent">
                     <div class="msg-meta">[SISTEMA] HISTORIAL REINICIADO</div>
-                    Consola analítica limpia y disponible para nuevas directivas sismológicas.
+                    Consola analítica limpia y disponible para nuevas consultas técnicas.
                 </div>
             `;
         }
@@ -1994,16 +2118,14 @@
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;');
 
-            // Reemplazo de bloques de código
-            html = html.replace(/```([\s\S]*?)```/g, '<pre style="background:#09101a; padding:8px; border-radius:4px; font-family:var(--font-mono); font-size:0.75rem; border:1px solid var(--border-subtle); overflow-x:auto;"><code>$1</code></pre>');
-            html = html.replace(/`([^`]+)`/g, '<code style="background:#09101a; padding:1px 4px; border-radius:3px; font-family:var(--font-mono); color:var(--magma-light);">$1</code>');
+            html = html.replace(/```([\s\S]*?)```/g, '<pre style="background:#f4eee3; padding:8px; border-radius:4px; font-family:var(--font-mono); font-size:0.75rem; border:1px solid var(--border-subtle); overflow-x:auto;"><code>$1</code></pre>');
+            html = html.replace(/`([^`]+)`/g, '<code style="background:#f4eee3; padding:1px 4px; border-radius:3px; font-family:var(--font-mono); color:var(--terracotta); font-weight:700;">$1</code>');
             html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
             html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
             html = html.replace(/\n/g, '<br>');
 
-            // Resaltado de tags tácticos entre corchetes
-            html = html.replace(/\[(ALERTA CRÍTICA|CRÍTICO|EMERGENCIA)\]/g, '<span style="color:#ef4444; font-weight:800; font-family:var(--font-mono);">[$1]</span>');
-            html = html.replace(/\[(ESTADO|PARÁMETROS|DICTAMEN TÉCNICO|SISTEMA|ANÁLISIS)\]/g, '<span style="color:var(--magma-light); font-weight:800; font-family:var(--font-mono);">[$1]</span>');
+            html = html.replace(/\[(ALERTA CRÍTICA|CRÍTICO|EMERGENCIA)\]/g, '<span style="color:var(--crimson-earth); font-weight:800; font-family:var(--font-mono);">[$1]</span>');
+            html = html.replace(/\[(ESTADO|PARÁMETROS|DICTAMEN TÉCNICO|SISTEMA|ANÁLISIS)\]/g, '<span style="color:var(--terracotta); font-weight:800; font-family:var(--font-mono);">[$1]</span>');
 
             return html;
         }
@@ -2017,7 +2139,6 @@
             const thread = document.getElementById('chat-thread-container');
             const typing = document.getElementById('chat-typing-indicator');
 
-            // Mensaje de usuario
             const userMsg = document.createElement('div');
             userMsg.className = 'chat-msg user';
             userMsg.innerText = text;
@@ -2048,14 +2169,14 @@
                 } else {
                     const errMsg = document.createElement('div');
                     errMsg.className = 'chat-msg agent';
-                    errMsg.innerHTML = `<span style="color: #ef4444;">[ERROR]: No fue posible consultar el modelo de inteligencia artificial.</span>`;
+                    errMsg.innerHTML = `<span style="color: var(--crimson-earth);">[ERROR]: No fue posible consultar el modelo de inteligencia artificial.</span>`;
                     thread.appendChild(errMsg);
                 }
             } catch (err) {
                 typing.style.display = 'none';
                 const errMsg = document.createElement('div');
                 errMsg.className = 'chat-msg agent';
-                errMsg.innerHTML = `<span style="color: #ef4444;">[ERROR DE RED]: ${err.message}</span>`;
+                errMsg.innerHTML = `<span style="color: var(--crimson-earth);">[ERROR DE RED]: ${err.message}</span>`;
                 thread.appendChild(errMsg);
             }
 
