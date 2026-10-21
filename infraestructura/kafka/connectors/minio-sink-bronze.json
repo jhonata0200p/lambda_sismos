@@ -23,6 +23,6 @@
     "locale": "es",
     "timezone": "UTC",
     "timestamp.extractor": "Wallclock",
-    "value.converter": "org.apache.kafka.converters.ByteArrayConverter"
+    "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter"
   }
 }
