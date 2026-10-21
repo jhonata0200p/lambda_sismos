@@ -3,11 +3,19 @@
   "config": {
     "connector.class": "com.github.castorm.kafka.connect.http.HttpSourceConnector",
     "tasks.max": "1",
-    "kafka.topic": "sismos_crudos",
+    "kafka.topic": "streaming",
     "http.request.url": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson",
     "http.request.method": "GET",
     "http.timer.interval.millis": "60000",
-    "value.converter": "org.apache.kafka.connect.storage.StringConverter",
-    "key.converter": "org.apache.kafka.connect.storage.StringConverter"
+    "http.response.record.parser": "com.github.castorm.kafka.connect.http.response.jackson.JacksonKvRecordHttpResponseParser",
+    "http.response.list.pointer": "/features",
+    "http.response.record.key.pointer": "/id",
+    "http.response.record.pointer": "/",
+    "http.response.record.timestamp.pointer": "/properties/time",
+    "http.response.record.offset.pointer": "key=/id,timestamp=/properties/time",
+    "http.record.filter.factory": "com.github.castorm.kafka.connect.http.record.OffsetTimestampRecordFilterFactory",
+    "http.response.record.mapper": "com.github.castorm.kafka.connect.http.record.StringKvSourceRecordMapper",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.storage.StringConverter"
   }
 }

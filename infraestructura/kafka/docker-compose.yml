@@ -2,12 +2,13 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka_broker
+    user: "0:0"
     ports:
       - "9092:9092"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
-      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka_broker:29092,PLAINTEXT_HOST://localhost:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka_broker:29092,PLAINTEXT_HOST://${HOST_IP:-10.175.132.244}:9092"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
@@ -22,6 +23,8 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     networks:
       - red_compartida
+    volumes:
+      - kafka_data:/tmp/kraft-combined-logs
     restart: always
 
   # Contenedor de inicialización que garantiza que el topic exista antes de que nadie escriba
@@ -39,7 +42,27 @@ services:
         cub kafka-ready -b kafka_broker:29092 1 30
         echo "Creando topic sismos_crudos si no existe..."
         kafka-topics --bootstrap-server kafka_broker:29092 --create --if-not-exists --topic sismos_crudos --partitions 1 --replication-factor 1
-        echo "Topic sismos_crudos listo."
+        echo "Creando topic streaming si no existe..."
+        kafka-topics --bootstrap-server kafka_broker:29092 --create --if-not-exists --topic streaming --partitions 1 --replication-factor 1
+        echo "Topics sismos_crudos y streaming listos."
+
+  # Puente en vivo que mantiene sincronizado streaming con sismos_crudos
+  kafka-topic-sync:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka_topic_sync
+    networks:
+      - red_compartida
+    depends_on:
+      - kafka
+      - kafka-init-topic
+    restart: always
+    command:
+      - bash
+      - -c
+      - |
+        cub kafka-ready -b kafka_broker:29092 1 30
+        echo "Iniciando sincronizacion streaming -> sismos_crudos..."
+        kafka-console-consumer --bootstrap-server kafka_broker:29092 --topic streaming --from-beginning | kafka-console-producer --bootstrap-server kafka_broker:29092 --topic sismos_crudos
 
   kafka-connect:
     image: confluentinc/cp-kafka-connect:7.5.0
@@ -67,21 +90,24 @@ services:
       - bash
       - -c
       - |
-        # 1. Instalar plugin oficial
+        # 1. Instalar plugins: HTTP Source y S3 Sink
         mkdir -p /usr/share/confluent-hub-components/kafka-connect-http
         curl -sL https://github.com/castorm/kafka-connect-http/releases/download/v0.8.11/kafka-connect-http-0.8.11-plugin.tar.gz | tar -xz -C /usr/share/confluent-hub-components/kafka-connect-http --strip-components=1
-        
-        # 2. Registrar el conector automaticamente una vez que el puerto REST responda
+        confluent-hub install --no-prompt confluentinc/kafka-connect-s3:10.5.6
+
+        # 2. Registrar los conectores automaticamente una vez que el puerto REST responda
         (
           echo "Esperando a que Kafka Connect levante el puerto 8083..."
           while [ $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8083/connectors) -ne 200 ]; do
             sleep 3
           done
-          echo "Kafka Connect listo. Registrando conector HTTP USGS..."
+          echo "Kafka Connect listo. Registrando conectores..."
           curl -s -X POST -H "Content-Type: application/json" --data @/connectors/http-source-usgs.json http://localhost:8083/connectors
-          echo "Conector registrado exitosamente de forma automatica."
+          echo "Conector HTTP Source registrado."
+          curl -s -X POST -H "Content-Type: application/json" --data @/connectors/minio-sink-bronze.json http://localhost:8083/connectors
+          echo "Conector MinIO S3 Sink registrado."
         ) &
-        
+
         # 3. Arrancar servicio
         /etc/confluent/docker/run
     networks:
@@ -108,3 +134,7 @@ networks:
   red_compartida:
     name: red_bigdata
     external: true
+
+volumes:
+  kafka_data:
+    name: kafka_data

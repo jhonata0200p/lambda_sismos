@@ -10,7 +10,7 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
       MINIO_LICENSE: /mnt/license/minio.license
     volumes:
-      - ./minio_data:/mnt/data
+      - minio_data:/mnt/data
       - ./minio.license:/mnt/license/minio.license:ro
     command: server /mnt/data --console-address ":9001"
     networks:
@@ -34,6 +34,9 @@ services:
       "
     networks:
       - red_compartida
+
+volumes:
+  minio_data:
 
 networks:
   red_compartida:

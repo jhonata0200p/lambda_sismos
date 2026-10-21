@@ -1,0 +1,32 @@
+{
+  "name": "minio-sink-bronze-streaming",
+  "config": {
+    "connector.class": "io.confluent.connect.s3.S3SinkConnector",
+    "tasks.max": "1",
+    "topics": "sismos_crudos",
+    "s3.bucket.name": "bronze",
+    "topics.dir": "",
+    "transforms": "ChangeTopic",
+    "transforms.ChangeTopic.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.ChangeTopic.regex": "sismos_crudos",
+    "transforms.ChangeTopic.replacement": "streaming",
+    "store.url": "http://10.175.132.248:9000",
+    "s3.path.style.access": "true",
+    "aws.access.key.id": "oxkD4UWJsmTRAl5djFtL",
+    "aws.secret.access.key": "9Fzr4JfLBmOfgkDH4vrzPL0MKBqOg3JkZoSWTkco",
+    "s3.region": "us-east-1",
+    "storage.class": "io.confluent.connect.s3.storage.S3Storage",
+    "format.class": "io.confluent.connect.s3.format.bytearray.ByteArrayFormat",
+    "format.bytearray.extension": ".json",
+    "format.bytearray.separator": "\n",
+    "flush.size": "1",
+    "schema.compatibility": "NONE",
+    "partitioner.class": "io.confluent.connect.storage.partitioner.TimeBasedPartitioner",
+    "path.format": "'año'=YYYY/'mes'=MM/'dia'=dd",
+    "partition.duration.ms": "86400000",
+    "locale": "es",
+    "timezone": "UTC",
+    "timestamp.extractor": "Wallclock",
+    "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter"
+  }
+}

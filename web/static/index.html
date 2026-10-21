@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Monitoreo Sísmico | Dark Amber Edition</title>
+    <!-- Leaflet Map CSS y JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-deep: #080a0f;
+            --bg-surface: #0f131d;
+            --bg-card: #151926;
+            --bg-card-hover: #1c2233;
+            --border: #22293d;
+            --border-amber: rgba(245, 158, 11, 0.4);
+            --yellow-glow: #fbbf24;
+            --yellow-main: #f59e0b;
+            --yellow-dark: #b45309;
+            --yellow-subtle: rgba(245, 158, 11, 0.12);
+            --red-alert: #f43f5e;
+            --red-glow: rgba(244, 63, 94, 0.5);
+            --green-live: #10b981;
+            --text-title: #ffffff;
+            --text-body: #cbd5e1;
+            --text-muted: #717f9e;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-deep);
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.12) 0%, transparent 60%),
+                radial-gradient(circle at 100% 100%, rgba(244, 63, 94, 0.05) 0%, transparent 50%);
+            color: var(--text-body);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+            padding: 20px 28px;
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: transform 0.1s ease;
+        }
+
+        /* EFECTO DE TEMBLOR EN PANTALLA */
+        @keyframes earthquake-rumble {
+            0% { transform: translate(0, 0); }
+            15% { transform: translate(-4px, 2px); }
+            30% { transform: translate(4px, -3px); }
+            45% { transform: translate(-3px, 3px); }
+            60% { transform: translate(3px, -2px); }
+            75% { transform: translate(-2px, 1px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        .rumble-active {
+            animation: earthquake-rumble 0.45s ease-in-out;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-enter {
+            animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* BARRA TICKER DE ALERTA SÍSMICA */
+        .live-ticker-wrap {
+            background: rgba(15, 19, 29, 0.85);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--yellow-main);
+            border-radius: 10px;
+            padding: 8px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            gap: 14px;
+        }
+
+        .ticker-label {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #ffffff;
+            font-size: 0.68rem;
+            font-weight: 900;
+            letter-spacing: 0.8px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ticker-label .ping {
+            width: 7px;
+            height: 7px;
+            background: #ffffff;
+            border-radius: 50%;
+            animation: pulse-quick 1s infinite;
+        }
+
+        @keyframes pulse-quick {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(0.7); }
+        }
+
+        .ticker-content {
+            display: flex;
+            white-space: nowrap;
+            animation: marquee 28s linear infinite;
+            font-size: 0.78rem;
+            color: #e2e8f0;
+            font-weight: 500;
+            gap: 36px;
+        }
+
+        .ticker-item strong {
+            color: var(--yellow-glow);
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* ENCABEZADO */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(180deg, rgba(21, 25, 38, 0.95) 0%, rgba(15, 19, 29, 0.95) 100%);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 16px 26px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(12px);
+            margin-bottom: 22px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-badge-icon {
+            background: linear-gradient(135deg, #fef08a 0%, #f59e0b 50%, #b45309 100%);
+            color: #451a03;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.45);
+            animation: float-icon 3s ease-in-out infinite;
+        }
+
+        @keyframes float-icon {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        .brand-titles h1 {
+            font-size: 1.45rem;
+            font-weight: 900;
+            letter-spacing: -0.4px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand-titles p {
+            font-size: 0.8rem;
+            color: var(--yellow-glow);
+            font-weight: 500;
+            opacity: 0.88;
+            margin-top: 2px;
+        }
+
+        /* SISMÓGRAFO CANVAS */
+        .seismograph-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(10, 13, 20, 0.7);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 12px;
+        }
+
+        .seismograph-info {
+            display: flex;
+            flex-direction: column;
+            text-align: right;
+        }
+
+        .seismograph-info span {
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: var(--yellow-glow);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .seismograph-info small {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+        }
+
+        #seismoCanvas {
+            border-radius: 6px;
+            background: #080a0f;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* BADGE CONEXIÓN POSTGRES */
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #34d399;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.4px;
+        }
+
+        .radar-ping {
+            width: 10px;
+            height: 10px;
+            background: #10b981;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .radar-ping::after {
+            content: "";
+            position: absolute;
+            top: -5px; left: -5px; right: -5px; bottom: -5px;
+            border: 2px solid #10b981;
+            border-radius: 50%;
+            animation: radar-wave 1.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+        }
+
+        @keyframes radar-wave {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(2.3); opacity: 0; }
+        }
+
+        /* BOTÓN SIMULAR EN VIVO */
+        .btn-amber {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 0.82rem;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 4px 18px rgba(245, 158, 11, 0.4);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-amber::after {
+            content: "";
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+            transform: rotate(45deg);
+            animation: btn-shine 3.5s infinite;
+        }
+
+        @keyframes btn-shine {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            20%, 100% { transform: translateX(100%) rotate(45deg); }
+        }
+
+        .btn-amber:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 26px rgba(245, 158, 11, 0.65);
+        }
+
+        /* KPIS GRID */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+            margin-bottom: 22px;
+        }
+
+        .kpi-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 24px;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .kpi-box:hover {
+            border-color: var(--yellow-glow);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(245, 158, 11, 0.18);
+        }
+
+        .kpi-box::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 15%; right: 15%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--yellow-main), transparent);
+        }
+
+        .kpi-tag-title {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .kpi-big-number {
+            font-size: 2.35rem;
+            font-weight: 900;
+            color: #ffffff;
+            margin: 6px 0 2px 0;
+            font-feature-settings: "tnum";
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.5px;
+        }
+
+        .kpi-note {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* MAPA GIGANTE */
+        .map-wrapper {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 22px;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45);
+            margin-bottom: 22px;
+            transition: border-color 0.3s ease;
+            position: relative;
+        }
+
+        .map-wrapper:hover {
+            border-color: var(--border-amber);
+        }
+
+        .map-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .map-title-text h2 {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .map-title-text p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .legend-bar {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .leg-item { display: flex; align-items: center; gap: 6px; }
+        .leg-red { width: 10px; height: 10px; border-radius: 50%; background: #f43f5e; box-shadow: 0 0 10px #f43f5e; }
+        .leg-yellow { width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+        .leg-green { width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981; }
+
+        #map {
+            width: 100%;
+            height: 620px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background-color: #0b0d14 !important;
+            z-index: 10;
+        }
+
+        .leaflet-container {
+            background-color: #0b0d14 !important;
+        }
+
+        .leaflet-div-icon {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        .seismic-pulse-red {
+            border: 2px solid #f43f5e;
+            background: rgba(244, 63, 94, 0.4);
+            border-radius: 50%;
+            animation: seismic-ripple 2s infinite ease-out;
+            pointer-events: none;
+        }
+
+        .seismic-pulse-yellow {
+            border: 2px solid #f59e0b;
+            background: rgba(245, 158, 11, 0.4);
+            border-radius: 50%;
+            animation: seismic-ripple 2.5s infinite ease-out;
+            pointer-events: none;
+        }
+
+        @keyframes seismic-ripple {
+            0% { transform: scale(0.6); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+
+        /* SECCIÓN INFERIOR */
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 1fr 1.25fr;
+            gap: 22px;
+        }
+
+        @media (max-width: 1024px) {
+            .bottom-row { grid-template-columns: 1fr; }
+        }
+
+        .sub-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 22px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .sub-card-header h3 {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sub-card-header p {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin: 2px 0 16px 0;
+        }
+
+        .chart-box {
+            position: relative;
+            height: 330px;
+            width: 100%;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            max-height: 330px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.8rem;
+        }
+
+        th {
+            background-color: var(--bg-surface);
+            color: var(--yellow-glow);
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+
+        td {
+            padding: 13px 14px;
+            border-bottom: 1px solid #1c2235;
+            color: #cbd5e1;
+            transition: all 0.2s ease;
+        }
+
+        tr:hover td {
+            background-color: rgba(245, 158, 11, 0.08);
+            color: #ffffff;
+        }
+
+        @keyframes highlight-new-row {
+            0% { background-color: rgba(245, 158, 11, 0.4); }
+            100% { background-color: transparent; }
+        }
+
+        .new-row-flash td {
+            animation: highlight-new-row 3s ease-out;
+        }
+
+        .pill-alert {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.68rem;
+            font-weight: 900;
+            letter-spacing: 0.4px;
+        }
+
+        .pill-critico { background: rgba(244, 63, 94, 0.18); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.45); }
+        .pill-moderado { background: rgba(245, 158, 11, 0.18); color: #fde047; border: 1px solid rgba(245, 158, 11, 0.45); }
+        .pill-normal { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.45); }
+
+        .leaflet-popup-content-wrapper {
+            background: #151926 !important;
+            color: #f8fafc !important;
+            border-radius: 12px !important;
+            border: 1px solid var(--yellow-main) !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7) !important;
+        }
+        .leaflet-popup-tip { background: #151926 !important; }
+
+        /* CONTROL DE CAPAS DARK */
+        .leaflet-control-layers {
+            background: #151926 !important;
+            color: #cbd5e1 !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 10px !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+        }
+        .leaflet-control-layers-expanded {
+            padding: 10px 14px !important;
+            font-size: 0.78rem !important;
+        }
+
+        /* ==========================================================================
+           GEOCOPILOT IA CHATBOT WIDGET STYLES (DARK AMBER CYBERPUNK)
+           ========================================================================== */
+        .geocopilot-floating-btn {
+            position: fixed;
+            bottom: 26px;
+            right: 26px;
+            z-index: 9999;
+            background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+            border: 2px solid #fbbf24;
+            color: #ffffff;
+            border-radius: 9999px;
+            padding: 10px 20px 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            box-shadow: 0 8px 30px rgba(245, 158, 11, 0.45), 0 0 16px rgba(251, 191, 36, 0.3);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            outline: none;
+        }
+
+        .geocopilot-floating-btn:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 12px 40px rgba(245, 158, 11, 0.65), 0 0 24px rgba(251, 191, 36, 0.5);
+            border-color: #fef08a;
+        }
+
+        .geocopilot-floating-btn .btn-icon {
+            font-size: 1.6rem;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+            animation: float-bot 3s ease-in-out infinite;
+        }
+
+        @keyframes float-bot {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        .geocopilot-floating-btn .btn-text-wrap {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .geocopilot-floating-btn .btn-title {
+            font-size: 0.92rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .geocopilot-floating-btn .btn-status {
+            font-size: 0.68rem;
+            color: #fef3c7;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            background: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+
+        /* VENTANA DE CHAT */
+        .geocopilot-chat-window {
+            position: fixed;
+            bottom: 96px;
+            right: 26px;
+            width: 440px;
+            max-width: calc(100vw - 40px);
+            height: 600px;
+            max-height: calc(100vh - 120px);
+            background: rgba(15, 19, 29, 0.96);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            border-radius: 22px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(245, 158, 11, 0.2);
+            z-index: 9998;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: chatSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes chatSlideUp {
+            from { opacity: 0; transform: translateY(20px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .chat-header {
+            padding: 14px 18px;
+            background: linear-gradient(180deg, rgba(26, 32, 48, 0.9) 0%, rgba(18, 22, 34, 0.9) 100%);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-avatar {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, #f59e0b, #b45309);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        }
+
+        .chat-title {
+            font-size: 0.96rem;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 0.3px;
+        }
+
+        .chat-sub {
+            font-size: 0.72rem;
+            color: var(--yellow-glow);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+        }
+
+        .chat-header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-action-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .chat-action-btn:hover {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border-color: rgba(245, 158, 11, 0.4);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 18px 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(245, 158, 11, 0.3) transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 5px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(245, 158, 11, 0.3);
+            border-radius: 10px;
+        }
+
+        .chat-bubble {
+            max-width: 88%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .bot-bubble {
+            align-self: flex-start;
+            background: #181d2c;
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            color: #e2e8f0;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }
+
+        .bot-bubble .bubble-header {
+            font-size: 0.68rem;
+            font-weight: 800;
+            color: var(--yellow-glow);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .user-bubble {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #ffffff;
+            font-weight: 600;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
+        }
+
+        .prompt-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .prompt-chips .chip {
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: #fbbf24;
+            font-size: 0.73rem;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .prompt-chips .chip:hover {
+            background: #f59e0b;
+            color: #ffffff;
+            border-color: #f59e0b;
+            transform: translateY(-1px);
+        }
+
+        .chat-typing {
+            padding: 8px 16px;
+            background: rgba(24, 29, 44, 0.8);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.74rem;
+            color: #94a3b8;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #f59e0b;
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        .chat-input-bar {
+            padding: 12px 14px;
+            background: #111520;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .chat-input-bar input {
+            flex: 1;
+            background: #181d2c;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.84rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .chat-input-bar input:focus {
+            border-color: #f59e0b;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+        }
+
+        .chat-input-bar input::placeholder {
+            color: #64748b;
+        }
+
+        .chat-input-bar button {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border: none;
+            color: #ffffff;
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+            transition: all 0.2s;
+        }
+
+        .chat-input-bar button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 18px rgba(245, 158, 11, 0.55);
+        }
+
+    </style>
+</head>
+<body id="page-body">
+
+    <!-- BARRA TICKER -->
+    <div class="live-ticker-wrap animate-enter">
+        <div class="ticker-label">
+            <span class="ping"></span>
+            FEED EN VIVO
+        </div>
+        <div class="ticker-content" id="ticker-feed">
+            <span class="ticker-item">⚡ <strong>Conectando...</strong> — Obteniendo telemetría en tiempo real desde PostgreSQL</span>
+        </div>
+    </div>
+
+    <!-- ENCABEZADO -->
+    <header class="header animate-enter">
+        <div class="header-brand">
+            <div class="brand-badge-icon">⚡</div>
+            <div class="brand-titles">
+                <h1>SISTEMA DE MONITOREO SÍSMICO GLOBAL</h1>
+                <p>Plataforma Big Data en Tiempo Real • Lambda Architecture & PostgreSQL Serving Layer</p>
+            </div>
+        </div>
+
+        <div class="seismograph-box">
+            <div class="seismograph-info">
+                <span>SISMÓGRAFO KAFKA</span>
+                <small id="seismoStatus">FRECUENCIA: 10 Hz</small>
+            </div>
+            <canvas id="seismoCanvas" width="130" height="34"></canvas>
+        </div>
+
+        <div class="header-controls">
+            <div class="live-indicator" id="dbIndicator">
+                <span class="radar-ping"></span>
+                <span id="dbIndicatorText">POSTGRES CONECTADO</span>
+            </div>
+            <button onclick="simularSismoEnVivo()" class="btn-amber" title="Inyecta un sismo de prueba directamente en PostgreSQL">
+                <span>➕</span> Simular Sismo en Vivo
+            </button>
+        </div>
+    </header>
+
+    <!-- KPIS CON DATOS REALES DE POSTGRES -->
+    <section class="kpi-row">
+        <div class="kpi-box animate-enter" style="animation-delay: 0.1s;">
+            <div class="kpi-tag-title">Total Sismos Monitoreados <span>📊</span></div>
+            <div class="kpi-big-number" id="kpi-total">0</div>
+            <div class="kpi-note" id="kpi-desglose">Cargando desglose Lambda...</div>
+        </div>
+
+        <div class="kpi-box animate-enter" style="animation-delay: 0.2s;">
+            <div class="kpi-tag-title">Sismo Máximo Registrado <span>💥</span></div>
+            <div class="kpi-big-number" style="color: #fbbf24;" id="kpi-max">0.00 M</div>
+            <div class="kpi-note" id="kpi-max-lugar">Consultado desde PostgreSQL</div>
+        </div>
+
+        <div class="kpi-box animate-enter" style="animation-delay: 0.3s;">
+            <div class="kpi-tag-title">Zonas en Alerta Crítica <span>🚨</span></div>
+            <div class="kpi-big-number" style="color: #f43f5e;" id="kpi-criticas">0</div>
+            <div class="kpi-note">🔴 Enjambres activos o sismos ≥ 5.0 M</div>
+        </div>
+
+        <div class="kpi-box animate-enter" style="animation-delay: 0.4s;">
+            <div class="kpi-tag-title">Alertas de Tsunami <span>🌊</span></div>
+            <div class="kpi-big-number" style="color: #38bdf8;" id="kpi-tsunamis">0</div>
+            <div class="kpi-note">Emitidas en el Pacífico y Cuencas</div>
+        </div>
+    </section>
+
+    <!-- MAPA GIGANTE CON DATOS DE VISTA_ZONAS_CRITICAS_FRECUENTES -->
+    <section class="map-wrapper animate-enter" style="animation-delay: 0.5s;">
+        <div class="map-top-bar">
+            <div class="map-title-text">
+                <h2><span>🗺️</span> Mapa Mundial de Hotspots Sísmicos (Capa Gold 2)</h2>
+                <p>Cuadrículas geográficas servidas desde vista_zonas_criticas_frecuentes</p>
+            </div>
+            
+            <div class="legend-bar">
+                <div class="leg-item"><span class="leg-red"></span> Crítico (Sismos ≥ 5.0 o enjambres)</div>
+                <div class="leg-item"><span class="leg-yellow"></span> Moderado</div>
+                <div class="leg-item"><span class="leg-green"></span> Normal</div>
+            </div>
+        </div>
+
+        <div id="map"></div>
+    </section>
+
+    <!-- GRÁFICA Y TABLA -->
+    <section class="bottom-row animate-enter" style="animation-delay: 0.6s;">
+        
+        <!-- GRÁFICA GOLD 1: VISTA_RESUMEN_DIARIO_PAIS -->
+        <div class="sub-card">
+            <div class="sub-card-header">
+                <h3><span>📊</span> Top Países con Mayor Actividad (Gold 1)</h3>
+                <p>Métricas consolidadas servidas desde vista_resumen_diario_pais</p>
+            </div>
+            
+            <div class="chart-box">
+                <canvas id="chartPaises"></canvas>
+            </div>
+        </div>
+
+        <!-- TABLA GOLD 2: VISTA_ZONAS_CRITICAS_FRECUENTES -->
+        <div class="sub-card">
+            <div class="sub-card-header">
+                <h3><span>📋</span> Fallas Geológicas y Zonas de Alto Peligro</h3>
+                <p>Servido directamente desde vista_zonas_criticas_frecuentes</p>
+            </div>
+            
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Alerta</th>
+                            <th>Zona / Falla</th>
+                            <th>Coordenadas</th>
+                            <th style="text-align: center;">Sismos</th>
+                            <th style="text-align: center;">Máx Mag</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-body">
+                        <!-- Inyectado por JS desde PostgreSQL -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- SCRIPTS CON FETCH A FASTAPI -->
+    <script>
+        // 1. SISMÓGRAFO CANVAS
+        const canvas = document.getElementById("seismoCanvas");
+        const sCtx = canvas.getContext("2d");
+        let waveOffset = 0;
+        let tremorAmplitude = 3;
+
+        function drawSeismograph() {
+            sCtx.clearRect(0, 0, canvas.width, canvas.height);
+            sCtx.strokeStyle = "#f59e0b";
+            sCtx.lineWidth = 1.5;
+            sCtx.shadowBlur = 6;
+            sCtx.shadowColor = "#fbbf24";
+            sCtx.beginPath();
+
+            const midY = canvas.height / 2;
+            for (let x = 0; x < canvas.width; x++) {
+                const y = midY + Math.sin((x + waveOffset) * 0.15) * tremorAmplitude * Math.sin(x * 0.05)
+                               + (Math.random() - 0.5) * (tremorAmplitude * 0.4);
+                if (x === 0) sCtx.moveTo(x, y);
+                else sCtx.lineTo(x, y);
+            }
+            sCtx.stroke();
+            waveOffset += 2;
+
+            if (tremorAmplitude > 3.2) {
+                tremorAmplitude *= 0.985;
+            }
+
+            requestAnimationFrame(drawSeismograph);
+        }
+        drawSeismograph();
+
+        // 2. ANIMACIÓN DE CONTEO EN KPIS
+        function animateCounter(id, target, isDecimal = false, suffix = "") {
+            const el = document.getElementById(id);
+            const duration = 1200;
+            const startTime = performance.now();
+            const startVal = parseFloat(el.innerText) || 0;
+
+            function update(time) {
+                const elapsed = time - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const current = isDecimal ? (startVal + easeOut * (target - startVal)).toFixed(2) : Math.floor(startVal + easeOut * (target - startVal));
+                
+                el.innerText = `${current}${suffix}`;
+                if (progress < 1) requestAnimationFrame(update);
+            }
+            requestAnimationFrame(update);
+        }
+
+        // 3. INICIALIZAR MAPA (100% GRATIS, SIN API KEY)
+        const map = L.map('map', { zoomControl: true }).setView([22, 10], 2);
+        
+        // Capa 1: Modo Oscuro Profundo (Esri Dark Gray - Cero API Key)
+        const darkLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+            maxZoom: 16
+        }).addTo(map);
+
+        // Capa 2: Vista Satelital Real (Esri World Imagery - Cero API Key)
+        const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; USGS, NASA',
+            maxZoom: 18
+        });
+
+        // Capa 3: OpenStreetMap Clásico (Cero API Key)
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        });
+
+        // Selector de capas en la esquina del mapa
+        L.control.layers({
+            "🌙 Modo Oscuro (Esri)": darkLayer,
+            "🛰️ Satelital Real": satLayer,
+            "🗺️ OpenStreetMap": osmLayer
+        }, null, { position: 'topright' }).addTo(map);
+
+        const markersLayer = L.layerGroup().addTo(map);
+
+        // 4. CHART.JS INSTANCIA
+        const ctx = document.getElementById('chartPaises').getContext('2d');
+        const chartPaises = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Total Sismos',
+                    data: [],
+                    backgroundColor: [
+                        '#fbbf24', '#f59e0b', '#d97706', '#f43f5e', '#fb7185', '#64748b', '#475569', '#334155'
+                    ],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                animation: { duration: 1200, easing: 'easeOutQuart' },
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#1e2438' }, ticks: { color: '#94a3b8' } },
+                    y: { grid: { display: false }, ticks: { color: '#ffffff', font: { weight: 'bold' } } }
+                }
+            }
+        });
+
+        // 5. SONIDO DE TERREMOTO NATIVO
+        function playSeismicRumbleSound() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const aCtx = new AudioContext();
+                const osc = aCtx.createOscillator();
+                const gain = aCtx.createGain();
+                
+                osc.type = "sawtooth";
+                osc.frequency.setValueAtTime(65, aCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, aCtx.currentTime + 0.6);
+                
+                gain.gain.setValueAtTime(0.35, aCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, aCtx.currentTime + 0.65);
+                
+                osc.connect(gain);
+                gain.connect(aCtx.destination);
+                
+                osc.start();
+                osc.stop(aCtx.currentTime + 0.7);
+            } catch(e) {}
+        }
+
+        // 6. CONECTARSE A LOS ENDPOINTS DE FASTAPI
+        let previousTotalSismos = 0;
+
+        async function cargarDatosDesdePostgres() {
+            try {
+                // A. Cargar KPIs
+                const resKpis = await fetch('/api/kpis');
+                if (resKpis.ok) {
+                    const kpi = await resKpis.json();
+                    
+                    // Si entraron nuevos sismos desde Spark o simulación, activar rumble
+                    if (previousTotalSismos > 0 && kpi.total_sismos > previousTotalSismos) {
+                        dispararEfectoTemblor();
+                    }
+                    previousTotalSismos = kpi.total_sismos;
+
+                    animateCounter("kpi-total", kpi.total_sismos);
+                    animateCounter("kpi-max", kpi.max_magnitud, true, " M");
+                    animateCounter("kpi-criticas", kpi.total_criticas);
+                    animateCounter("kpi-tsunamis", kpi.total_tsunamis);
+
+                    document.getElementById("kpi-desglose").innerText = 
+                        `${kpi.desglose_origen.batch} en Batch histórico + ${kpi.desglose_origen.streaming} en Streaming hoy`;
+                }
+
+                // B. Cargar Resumen Países (Chart.js)
+                const resPaises = await fetch('/api/resumen-paises');
+                if (resPaises.ok) {
+                    const paises = await resPaises.json();
+                    chartPaises.data.labels = paises.map(p => p.pais_estado);
+                    chartPaises.data.datasets[0].data = paises.map(p => p.total_sismos);
+                    chartPaises.update();
+                }
+
+                // C. Cargar Zonas Críticas (Mapa y Tabla)
+                const resZonas = await fetch('/api/zonas-criticas');
+                if (resZonas.ok) {
+                    const zonas = await resZonas.json();
+                    renderizarMapaYTabla(zonas);
+                    actualizarTicker(zonas);
+                }
+
+            } catch (err) {
+                console.warn("Esperando conexión con FastAPI...", err);
+                document.getElementById("dbIndicatorText").innerText = "RECONECTANDO A POSTGRES...";
+                document.getElementById("dbIndicator").style.borderColor = "#f59e0b";
+            }
+        }
+
+        function renderizarMapaYTabla(zonas) {
+            markersLayer.clearLayers();
+            const tbody = document.getElementById("tabla-body");
+            tbody.innerHTML = "";
+
+            zonas.forEach((z, index) => {
+                let color = z.nivel_alerta === "CRITICO" ? "#f43f5e" : (z.nivel_alerta === "MODERADO" ? "#f59e0b" : "#10b981");
+                let pulseClass = z.nivel_alerta === "CRITICO" ? "seismic-pulse-red" : (z.nivel_alerta === "MODERADO" ? "seismic-pulse-yellow" : "");
+
+                // Leaflet Marker
+                let circle = L.circleMarker([z.cuadricula_lat, z.cuadricula_lon], {
+                    radius: Math.max(z.total_sismos_registrados * 0.7, 9),
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.7,
+                    weight: 2
+                }).addTo(markersLayer);
+
+                if (pulseClass) {
+                    let pulseIcon = L.divIcon({
+                        className: pulseClass,
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                    });
+                    L.marker([z.cuadricula_lat, z.cuadricula_lon], { icon: pulseIcon }).addTo(markersLayer);
+                }
+
+                circle.bindPopup(`
+                    <div style="font-size: 0.85rem; padding: 4px;">
+                        <strong style="color: #ffffff; font-size: 1rem; display: block; margin-bottom: 6px;">${z.zona_referencia}</strong>
+                        <p style="margin: 3px 0;"><span style="color: #94a3b8;">Nivel Alerta:</span> <strong style="color: ${color};">${z.nivel_alerta}</strong></p>
+                        <p style="margin: 3px 0;"><span style="color: #94a3b8;">Total Sismos:</span> <strong style="color: #f59e0b;">${z.total_sismos_registrados}</strong></p>
+                        <p style="margin: 3px 0;"><span style="color: #94a3b8;">Magnitud Máxima:</span> <strong>${z.magnitud_maxima.toFixed(2)} M</strong></p>
+                        <p style="margin: 3px 0;"><span style="color: #94a3b8;">Profundidad Media:</span> ${z.profundidad_promedio_km} km</p>
+                    </div>
+                `);
+
+                // Tabla
+                let pillClass = z.nivel_alerta === "CRITICO" ? "pill-critico" :
+                               (z.nivel_alerta === "MODERADO" ? "pill-moderado" : "pill-normal");
+
+                const row = `
+                    <tr>
+                        <td><span class="pill-alert ${pillClass}">${z.nivel_alerta}</span></td>
+                        <td style="font-weight: 700; color: #ffffff;">${z.zona_referencia}</td>
+                        <td style="font-family: monospace; color: #94a3b8;">${z.cuadricula_lat.toFixed(1)}, ${z.cuadricula_lon.toFixed(1)}</td>
+                        <td style="text-align: center; font-weight: 800; color: #f59e0b;">${z.total_sismos_registrados}</td>
+                        <td style="text-align: center; font-weight: 800; color: #fbbf24;">${z.magnitud_maxima.toFixed(2)} M</td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+
+        function actualizarTicker(zonas) {
+            const feed = document.getElementById("ticker-feed");
+            if (!zonas || zonas.length === 0) return;
+            
+            let html = "";
+            zonas.slice(0, 6).forEach(z => {
+                let icono = z.nivel_alerta === "CRITICO" ? "🚨" : (z.nivel_alerta === "MODERADO" ? "⚠️" : "⚡");
+                html += `<span class="ticker-item">${icono} <strong>M ${z.magnitud_maxima.toFixed(2)}</strong> — ${z.zona_referencia} (${z.total_sismos_registrados} sismos)</span>`;
+            });
+            // Duplicar para efecto bucle infinito
+            feed.innerHTML = html + html;
+        }
+
+        function dispararEfectoTemblor() {
+            const body = document.getElementById("page-body");
+            body.classList.remove("rumble-active");
+            void body.offsetWidth;
+            body.classList.add("rumble-active");
+
+            playSeismicRumbleSound();
+
+            tremorAmplitude = 16;
+            document.getElementById("seismoStatus").innerText = "¡EVENTO SÍSMICO DETECTADO!";
+            document.getElementById("seismoStatus").style.color = "#f43f5e";
+            setTimeout(() => {
+                document.getElementById("seismoStatus").innerText = "FRECUENCIA: 10 Hz";
+                document.getElementById("seismoStatus").style.color = "#717f9e";
+            }, 3000);
+        }
+
+        // 7. BOTÓN SIMULAR SISMO STREAMING EN VIVO (HACE POST A FASTAPI)
+        async function simularSismoEnVivo() {
+            dispararEfectoTemblor();
+
+            try {
+                const res = await fetch('/api/simular-streaming', { method: 'POST' });
+                if (res.ok) {
+                    const data = await res.json();
+                    const s = data.sismo;
+
+                    // Refrescar datos desde PostgreSQL
+                    await cargarDatosDesdePostgres();
+
+                    // Vuelo cinemático al epicentro real del sismo generado
+                    if (s && s.lat && s.lon) {
+                        map.flyTo([s.lat, s.lon], 5, { duration: 2.0 });
+                    }
+                }
+            } catch (e) {
+                console.error("Error al inyectar sismo:", e);
+            }
+        }
+
+
+        // ==========================================================================
+        // LOGICA INTERACTIVA GEOCOPILOT IA CHATBOT
+        // ==========================================================================
+        function toggleGeoCopilot() {
+            const win = document.getElementById("geocopilot-window");
+            if (win.style.display === "none" || win.style.display === "") {
+                win.style.display = "flex";
+                document.getElementById("geocopilot-input").focus();
+            } else {
+                win.style.display = "none";
+            }
+        }
+
+        function limpiarChatGeoCopilot() {
+            const container = document.getElementById("geocopilot-messages");
+            container.innerHTML = `
+                <div class="chat-bubble bot-bubble">
+                    <div class="bubble-header">🤖 GeoCopilot • IA</div>
+                    <div class="bubble-text">
+                        Chat reiniciado. Estoy listo para tus consultas sobre la actividad sísmica y la arquitectura Lambda.
+                    </div>
+                    <div class="prompt-chips">
+                        <button class="chip" onclick="enviarPromptSugerido('¿Hay alguna alerta de tsunami o sismo destructivo?')">🚨 ¿Alertas o peligro?</button>
+                        <button class="chip" onclick="enviarPromptSugerido('Genera un boletín oficial de la situación sísmica actual')">📋 Boletín oficial</button>
+                        <button class="chip" onclick="enviarPromptSugerido('¿Cuáles son los epicentros con mayor magnitud registrados?')">📍 Epicentros activos</button>
+                        <button class="chip" onclick="enviarPromptSugerido('¿Cuántos sismos han llegado por Streaming vs Batch?')">⚡ Streaming vs Batch</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatMarkdownResponse(text) {
+            if (!text) return "";
+            let html = text
+                .replace(/^### (.*$)/gim, '<strong style="color: #fbbf24; display:block; margin: 6px 0; font-size: 0.95rem;">$1</strong>')
+                .replace(/^#### (.*$)/gim, '<strong style="color: #f59e0b; display:block; margin: 4px 0;">$1</strong>')
+                .replace(/\*\*(.*?)\*\*/gim, '<strong style="color: #ffffff;">$1</strong>')
+                .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+                .replace(/`([^`]+)`/gim, '<code style="background: rgba(255,255,255,0.1); color: #fbbf24; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>')
+                .replace(/^[•\*\-] (.*$)/gim, '<div style="margin-left: 10px; margin-bottom: 3px;">• $1</div>')
+                .replace(/\n/gim, '<br>');
+            return html;
+        }
+
+        function enviarPromptSugerido(prompt) {
+            const input = document.getElementById("geocopilot-input");
+            input.value = prompt;
+            enviarMensajeGeoCopilot();
+        }
+
+        async function enviarMensajeGeoCopilot() {
+            const input = document.getElementById("geocopilot-input");
+            const text = input.value.trim();
+            if (!text) return;
+
+            const container = document.getElementById("geocopilot-messages");
+            const typing = document.getElementById("geocopilot-typing");
+
+            // 1. Mensaje de usuario
+            const userBubble = document.createElement("div");
+            userBubble.className = "chat-bubble user-bubble";
+            userBubble.innerText = text;
+            container.appendChild(userBubble);
+            input.value = "";
+            container.scrollTop = container.scrollHeight;
+
+            // 2. Mostrar indicador de tipeo
+            typing.style.display = "flex";
+
+            try {
+                const res = await fetch("/api/chat-ia", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: text })
+                });
+
+                typing.style.display = "none";
+
+                if (res.ok) {
+                    const data = await res.json();
+                    const botBubble = document.createElement("div");
+                    botBubble.className = "chat-bubble bot-bubble";
+                    botBubble.innerHTML = `
+                        <div class="bubble-header">🤖 GeoCopilot • ${data.motor || 'IA Sismológica'}</div>
+                        <div class="bubble-text">${formatMarkdownResponse(data.respuesta)}</div>
+                    `;
+                    container.appendChild(botBubble);
+                } else {
+                    const errBubble = document.createElement("div");
+                    errBubble.className = "chat-bubble bot-bubble";
+                    errBubble.innerHTML = `<span style="color: #f43f5e;">⚠️ Error al consultar el motor de IA. Intenta de nuevo.</span>`;
+                    container.appendChild(errBubble);
+                }
+            } catch (err) {
+                typing.style.display = "none";
+                const errBubble = document.createElement("div");
+                errBubble.className = "chat-bubble bot-bubble";
+                errBubble.innerHTML = `<span style="color: #f43f5e;">⚠️ Error de conexión con el backend: ${err.message}</span>`;
+                container.appendChild(errBubble);
+            }
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Iniciar carga inmediata y polling automático cada 5 segundos
+        cargarDatosDesdePostgres();
+        setInterval(cargarDatosDesdePostgres, 5000);
+    </script>
+
+    <!-- ==========================================================================
+         GEOCOPILOT IA: BOTÓN FLOTANTE Y VENTANA DE CHAT INTELIGENTE
+         ========================================================================== -->
+    <button id="geocopilot-btn" class="geocopilot-floating-btn" onclick="toggleGeoCopilot()">
+        <span class="btn-icon">🤖</span>
+        <div class="btn-text-wrap">
+            <span class="btn-title">GeoCopilot IA</span>
+            <span class="btn-status"><span class="status-dot"></span> Google Gemini</span>
+        </div>
+    </button>
+
+    <div id="geocopilot-window" class="geocopilot-chat-window" style="display: none;">
+        <div class="chat-header">
+            <div class="chat-header-info">
+                <div class="chat-avatar">🤖</div>
+                <div>
+                    <div class="chat-title">GeoCopilot • Gemini AI</div>
+                    <div class="chat-sub"><span class="status-dot"></span> Gemini 1.5 Flash + PostgreSQL RAG</div>
+                </div>
+            </div>
+            <div class="chat-header-actions">
+                <button class="chat-action-btn" title="Limpiar chat" onclick="limpiarChatGeoCopilot()">🗑️</button>
+                <button class="chat-action-btn" title="Cerrar" onclick="toggleGeoCopilot()">✕</button>
+            </div>
+        </div>
+        <div id="geocopilot-messages" class="chat-messages">
+            <div class="chat-bubble bot-bubble">
+                <div class="bubble-header">🤖 GeoCopilot • IA</div>
+                <div class="bubble-text">
+                    ¡Hola! Soy <strong>GeoCopilot</strong>, el asistente sismológico inteligente impulsado por el modelo neuronal <strong>Google Gemini 1.5 Flash</strong> con RAG en tiempo real sobre la capa Serving de PostgreSQL.
+                    <br><br>
+                    ¿Qué deseas analizar de la actividad sísmica en tiempo real?
+                </div>
+                <div class="prompt-chips">
+                    <button class="chip" onclick="enviarPromptSugerido('¿Hay alguna alerta de tsunami o sismo destructivo?')">🚨 ¿Alertas o peligro?</button>
+                    <button class="chip" onclick="enviarPromptSugerido('Genera un boletín oficial de la situación sísmica actual')">📋 Boletín oficial</button>
+                    <button class="chip" onclick="enviarPromptSugerido('¿Cuáles son los epicentros con mayor magnitud registrados?')">📍 Epicentros activos</button>
+                    <button class="chip" onclick="enviarPromptSugerido('¿Cuántos sismos han llegado por Streaming vs Batch?')">⚡ Streaming vs Batch</button>
+                </div>
+            </div>
+        </div>
+        <div id="geocopilot-typing" class="chat-typing" style="display: none;">
+            <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+            <span class="typing-text">GeoCopilot consultando PostgreSQL...</span>
+        </div>
+        <div class="chat-input-bar">
+            <input type="text" id="geocopilot-input" placeholder="Pregúntale a GeoCopilot (ej: sismos en California)..." onkeydown="if(event.key==='Enter') enviarMensajeGeoCopilot()" />
+            <button id="geocopilot-send" onclick="enviarMensajeGeoCopilot()" title="Enviar">
+                <span>➤</span>
+            </button>
+        </div>
+    </div>
+
+</body>
+</html>
