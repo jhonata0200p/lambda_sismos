@@ -585,6 +585,343 @@
             padding: 10px 14px !important;
             font-size: 0.78rem !important;
         }
+
+        /* ==========================================================================
+           GEOCOPILOT IA CHATBOT WIDGET STYLES (DARK AMBER CYBERPUNK)
+           ========================================================================== */
+        .geocopilot-floating-btn {
+            position: fixed;
+            bottom: 26px;
+            right: 26px;
+            z-index: 9999;
+            background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+            border: 2px solid #fbbf24;
+            color: #ffffff;
+            border-radius: 9999px;
+            padding: 10px 20px 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            box-shadow: 0 8px 30px rgba(245, 158, 11, 0.45), 0 0 16px rgba(251, 191, 36, 0.3);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            outline: none;
+        }
+
+        .geocopilot-floating-btn:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 12px 40px rgba(245, 158, 11, 0.65), 0 0 24px rgba(251, 191, 36, 0.5);
+            border-color: #fef08a;
+        }
+
+        .geocopilot-floating-btn .btn-icon {
+            font-size: 1.6rem;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+            animation: float-bot 3s ease-in-out infinite;
+        }
+
+        @keyframes float-bot {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        .geocopilot-floating-btn .btn-text-wrap {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .geocopilot-floating-btn .btn-title {
+            font-size: 0.92rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .geocopilot-floating-btn .btn-status {
+            font-size: 0.68rem;
+            color: #fef3c7;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            background: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+
+        /* VENTANA DE CHAT */
+        .geocopilot-chat-window {
+            position: fixed;
+            bottom: 96px;
+            right: 26px;
+            width: 440px;
+            max-width: calc(100vw - 40px);
+            height: 600px;
+            max-height: calc(100vh - 120px);
+            background: rgba(15, 19, 29, 0.96);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            border-radius: 22px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(245, 158, 11, 0.2);
+            z-index: 9998;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: chatSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes chatSlideUp {
+            from { opacity: 0; transform: translateY(20px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .chat-header {
+            padding: 14px 18px;
+            background: linear-gradient(180deg, rgba(26, 32, 48, 0.9) 0%, rgba(18, 22, 34, 0.9) 100%);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-avatar {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, #f59e0b, #b45309);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        }
+
+        .chat-title {
+            font-size: 0.96rem;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 0.3px;
+        }
+
+        .chat-sub {
+            font-size: 0.72rem;
+            color: var(--yellow-glow);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+        }
+
+        .chat-header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-action-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .chat-action-btn:hover {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border-color: rgba(245, 158, 11, 0.4);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 18px 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(245, 158, 11, 0.3) transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 5px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(245, 158, 11, 0.3);
+            border-radius: 10px;
+        }
+
+        .chat-bubble {
+            max-width: 88%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .bot-bubble {
+            align-self: flex-start;
+            background: #181d2c;
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            color: #e2e8f0;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }
+
+        .bot-bubble .bubble-header {
+            font-size: 0.68rem;
+            font-weight: 800;
+            color: var(--yellow-glow);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .user-bubble {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #ffffff;
+            font-weight: 600;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
+        }
+
+        .prompt-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .prompt-chips .chip {
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: #fbbf24;
+            font-size: 0.73rem;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .prompt-chips .chip:hover {
+            background: #f59e0b;
+            color: #ffffff;
+            border-color: #f59e0b;
+            transform: translateY(-1px);
+        }
+
+        .chat-typing {
+            padding: 8px 16px;
+            background: rgba(24, 29, 44, 0.8);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.74rem;
+            color: #94a3b8;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #f59e0b;
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        .chat-input-bar {
+            padding: 12px 14px;
+            background: #111520;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .chat-input-bar input {
+            flex: 1;
+            background: #181d2c;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.84rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .chat-input-bar input:focus {
+            border-color: #f59e0b;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+        }
+
+        .chat-input-bar input::placeholder {
+            color: #64748b;
+        }
+
+        .chat-input-bar button {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border: none;
+            color: #ffffff;
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+            transition: all 0.2s;
+        }
+
+        .chat-input-bar button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 18px rgba(245, 158, 11, 0.55);
+        }
+
     </style>
 </head>
 <body id="page-body">
@@ -1007,9 +1344,168 @@
             }
         }
 
+
+        // ==========================================================================
+        // LOGICA INTERACTIVA GEOCOPILOT IA CHATBOT
+        // ==========================================================================
+        function toggleGeoCopilot() {
+            const win = document.getElementById("geocopilot-window");
+            if (win.style.display === "none" || win.style.display === "") {
+                win.style.display = "flex";
+                document.getElementById("geocopilot-input").focus();
+            } else {
+                win.style.display = "none";
+            }
+        }
+
+        function limpiarChatGeoCopilot() {
+            const container = document.getElementById("geocopilot-messages");
+            container.innerHTML = `
+                <div class="chat-bubble bot-bubble">
+                    <div class="bubble-header">🤖 GeoCopilot • IA</div>
+                    <div class="bubble-text">
+                        Chat reiniciado. Estoy listo para tus consultas sobre la actividad sísmica y la arquitectura Lambda.
+                    </div>
+                    <div class="prompt-chips">
+                        <button class="chip" onclick="enviarPromptSugerido('¿Hay alguna alerta de tsunami o sismo destructivo?')">🚨 ¿Alertas o peligro?</button>
+                        <button class="chip" onclick="enviarPromptSugerido('Genera un boletín oficial de la situación sísmica actual')">📋 Boletín oficial</button>
+                        <button class="chip" onclick="enviarPromptSugerido('¿Cuáles son los epicentros con mayor magnitud registrados?')">📍 Epicentros activos</button>
+                        <button class="chip" onclick="enviarPromptSugerido('¿Cuántos sismos han llegado por Streaming vs Batch?')">⚡ Streaming vs Batch</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatMarkdownResponse(text) {
+            if (!text) return "";
+            let html = text
+                .replace(/^### (.*$)/gim, '<strong style="color: #fbbf24; display:block; margin: 6px 0; font-size: 0.95rem;">$1</strong>')
+                .replace(/^#### (.*$)/gim, '<strong style="color: #f59e0b; display:block; margin: 4px 0;">$1</strong>')
+                .replace(/\*\*(.*?)\*\*/gim, '<strong style="color: #ffffff;">$1</strong>')
+                .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+                .replace(/`([^`]+)`/gim, '<code style="background: rgba(255,255,255,0.1); color: #fbbf24; padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>')
+                .replace(/^[•\*\-] (.*$)/gim, '<div style="margin-left: 10px; margin-bottom: 3px;">• $1</div>')
+                .replace(/\n/gim, '<br>');
+            return html;
+        }
+
+        function enviarPromptSugerido(prompt) {
+            const input = document.getElementById("geocopilot-input");
+            input.value = prompt;
+            enviarMensajeGeoCopilot();
+        }
+
+        async function enviarMensajeGeoCopilot() {
+            const input = document.getElementById("geocopilot-input");
+            const text = input.value.trim();
+            if (!text) return;
+
+            const container = document.getElementById("geocopilot-messages");
+            const typing = document.getElementById("geocopilot-typing");
+
+            // 1. Mensaje de usuario
+            const userBubble = document.createElement("div");
+            userBubble.className = "chat-bubble user-bubble";
+            userBubble.innerText = text;
+            container.appendChild(userBubble);
+            input.value = "";
+            container.scrollTop = container.scrollHeight;
+
+            // 2. Mostrar indicador de tipeo
+            typing.style.display = "flex";
+
+            try {
+                const res = await fetch("/api/chat-ia", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: text })
+                });
+
+                typing.style.display = "none";
+
+                if (res.ok) {
+                    const data = await res.json();
+                    const botBubble = document.createElement("div");
+                    botBubble.className = "chat-bubble bot-bubble";
+                    botBubble.innerHTML = `
+                        <div class="bubble-header">🤖 GeoCopilot • ${data.motor || 'IA Sismológica'}</div>
+                        <div class="bubble-text">${formatMarkdownResponse(data.respuesta)}</div>
+                    `;
+                    container.appendChild(botBubble);
+                } else {
+                    const errBubble = document.createElement("div");
+                    errBubble.className = "chat-bubble bot-bubble";
+                    errBubble.innerHTML = `<span style="color: #f43f5e;">⚠️ Error al consultar el motor de IA. Intenta de nuevo.</span>`;
+                    container.appendChild(errBubble);
+                }
+            } catch (err) {
+                typing.style.display = "none";
+                const errBubble = document.createElement("div");
+                errBubble.className = "chat-bubble bot-bubble";
+                errBubble.innerHTML = `<span style="color: #f43f5e;">⚠️ Error de conexión con el backend: ${err.message}</span>`;
+                container.appendChild(errBubble);
+            }
+
+            container.scrollTop = container.scrollHeight;
+        }
+
         // Iniciar carga inmediata y polling automático cada 5 segundos
         cargarDatosDesdePostgres();
         setInterval(cargarDatosDesdePostgres, 5000);
     </script>
+
+    <!-- ==========================================================================
+         GEOCOPILOT IA: BOTÓN FLOTANTE Y VENTANA DE CHAT INTELIGENTE
+         ========================================================================== -->
+    <button id="geocopilot-btn" class="geocopilot-floating-btn" onclick="toggleGeoCopilot()">
+        <span class="btn-icon">🤖</span>
+        <div class="btn-text-wrap">
+            <span class="btn-title">GeoCopilot IA</span>
+            <span class="btn-status"><span class="status-dot"></span> Google Gemini</span>
+        </div>
+    </button>
+
+    <div id="geocopilot-window" class="geocopilot-chat-window" style="display: none;">
+        <div class="chat-header">
+            <div class="chat-header-info">
+                <div class="chat-avatar">🤖</div>
+                <div>
+                    <div class="chat-title">GeoCopilot • Gemini AI</div>
+                    <div class="chat-sub"><span class="status-dot"></span> Gemini 1.5 Flash + PostgreSQL RAG</div>
+                </div>
+            </div>
+            <div class="chat-header-actions">
+                <button class="chat-action-btn" title="Limpiar chat" onclick="limpiarChatGeoCopilot()">🗑️</button>
+                <button class="chat-action-btn" title="Cerrar" onclick="toggleGeoCopilot()">✕</button>
+            </div>
+        </div>
+        <div id="geocopilot-messages" class="chat-messages">
+            <div class="chat-bubble bot-bubble">
+                <div class="bubble-header">🤖 GeoCopilot • IA</div>
+                <div class="bubble-text">
+                    ¡Hola! Soy <strong>GeoCopilot</strong>, el asistente sismológico inteligente impulsado por el modelo neuronal <strong>Google Gemini 1.5 Flash</strong> con RAG en tiempo real sobre la capa Serving de PostgreSQL.
+                    <br><br>
+                    ¿Qué deseas analizar de la actividad sísmica en tiempo real?
+                </div>
+                <div class="prompt-chips">
+                    <button class="chip" onclick="enviarPromptSugerido('¿Hay alguna alerta de tsunami o sismo destructivo?')">🚨 ¿Alertas o peligro?</button>
+                    <button class="chip" onclick="enviarPromptSugerido('Genera un boletín oficial de la situación sísmica actual')">📋 Boletín oficial</button>
+                    <button class="chip" onclick="enviarPromptSugerido('¿Cuáles son los epicentros con mayor magnitud registrados?')">📍 Epicentros activos</button>
+                    <button class="chip" onclick="enviarPromptSugerido('¿Cuántos sismos han llegado por Streaming vs Batch?')">⚡ Streaming vs Batch</button>
+                </div>
+            </div>
+        </div>
+        <div id="geocopilot-typing" class="chat-typing" style="display: none;">
+            <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+            <span class="typing-text">GeoCopilot consultando PostgreSQL...</span>
+        </div>
+        <div class="chat-input-bar">
+            <input type="text" id="geocopilot-input" placeholder="Pregúntale a GeoCopilot (ej: sismos en California)..." onkeydown="if(event.key==='Enter') enviarMensajeGeoCopilot()" />
+            <button id="geocopilot-send" onclick="enviarMensajeGeoCopilot()" title="Enviar">
+                <span>➤</span>
+            </button>
+        </div>
+    </div>
+
 </body>
 </html>

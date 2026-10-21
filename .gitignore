@@ -23,3 +23,6 @@ Thumbs.db
 .spark-staging/
 metastore_db/
 derby.log
+
+# Claves y secretos locales (NO subir a Git)
+web/.env

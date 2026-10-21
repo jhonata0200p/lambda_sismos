@@ -6,6 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from database import get_db
+from pydantic import BaseModel
+from ai_copilot import consultar_geocopilot
+
+class ChatRequest(BaseModel):
+    message: str
 
 app = FastAPI(
     title="Centro de Monitoreo Sísmico API",
@@ -234,6 +239,14 @@ def simular_streaming_insert():
                 }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/chat-ia")
+def chat_ia(req: ChatRequest):
+    """Endpoint de GeoCopilot IA: Asistente sismológico RAG sobre PostgreSQL"""
+    if not req.message or not req.message.strip():
+        raise HTTPException(status_code=400, detail="El mensaje no puede estar vacío")
+    return consultar_geocopilot(req.message)
 
 # Servir archivos estáticos del frontend
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")

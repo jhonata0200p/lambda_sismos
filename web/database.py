@@ -3,8 +3,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from contextlib import contextmanager
 
-# Configuración de conexión hacia PostgreSQL Serving Layer
-DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
+# Configuración de conexión hacia PostgreSQL Serving Layer (Laptop de Sayder)
+DB_HOST = os.getenv("POSTGRES_HOST", "10.175.132.248")
 DB_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 DB_NAME = os.getenv("POSTGRES_DB", "sismos_db")
 DB_USER = os.getenv("POSTGRES_USER", "postgres_user")
