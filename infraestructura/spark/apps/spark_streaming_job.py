@@ -14,24 +14,29 @@ from pyspark.sql.types import (
 )
 
 # ---------------------------------------------------------
-# 0. Parámetros de Conexión Distribuida (IPs fijas del equipo)
 # ---------------------------------------------------------
-# Kafka del compañero (10.175.132.244)
-KAFKA_BOOTSTRAP_SERVERS = "10.175.132.244:9092"
-KAFKA_TOPIC = "sismos_crudos"
-
-# MinIO Data Lake del compañero (10.175.132.248)
-MINIO_ENDPOINT = "http://10.175.132.248:9000"
-MINIO_ACCESS_KEY = "minioadmin"
-MINIO_SECRET_KEY = "minioadmin"
-
-# PostgreSQL Serving DB del compañero (10.175.132.248)
-PG_HOST = "10.175.132.248"
-PG_PORT = 5432
-PG_DB = "sismos_db"
-PG_USER = "postgres_user"
-PG_PASSWORD = "password123"
+# 0. Parámetros de Conexión Distribuida (Dinámicos por Variables de Entorno)
 # ---------------------------------------------------------
+import os
+
+# Kafka de Josué (IP terminada en .5)
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "10.175.132.5:9092")
+# Suscribirse a 'streaming' y 'sismos_crudos' para garantizar captura completa
+KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "streaming,sismos_crudos")
+
+# MinIO Data Lake de Sayder (10.175.132.248)
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://10.175.132.248:9000")
+if not MINIO_ENDPOINT.startswith("http"):
+    MINIO_ENDPOINT = f"http://{MINIO_ENDPOINT}"
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+
+# PostgreSQL Serving DB de Sayder (10.175.132.248)
+PG_HOST = os.getenv("POSTGRES_HOST", "10.175.132.248")
+PG_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
+PG_DB = os.getenv("POSTGRES_DB", "sismos_db")
+PG_USER = os.getenv("POSTGRES_USER", "postgres_user")
+PG_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password123")
 # 1. Sesión de Spark con soporte S3A (MinIO remoto)
 # ---------------------------------------------------------
 spark = SparkSession.builder \

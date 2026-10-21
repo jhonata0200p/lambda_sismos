@@ -10,6 +10,19 @@ services:
       - "5050:5050"   # Servidor Trigger HTTP para Airflow
     volumes:
       - ./apps:/opt/spark/apps
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-10.175.132.5:9092}
+      - KAFKA_TOPIC=${KAFKA_TOPIC:-streaming,sismos_crudos}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-10.175.132.248:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - POSTGRES_HOST=${POSTGRES_HOST:-10.175.132.248}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-sismos_db}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password123}
+      - ATLAS_HOST=${ATLAS_HOST:-10.175.132.244}
+      - ATLAS_PORT=${ATLAS_PORT:-21000}
     networks:
       - red_compartida
     restart: always
