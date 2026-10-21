@@ -99,29 +99,29 @@ def consultar_gemini(pregunta: str, contexto: dict) -> dict:
 
     if not api_key:
         return {
-            "respuesta": """⚠️ **Google Gemini no está configurado aún.**
+            "respuesta": """[CONFIGURACIÓN REQUERIDA] Google Gemini no está configurado.
 
-Para usar el chat con Inteligencia Artificial real, necesitas agregar tu clave en el archivo `web/.env`:
+Para habilitar el servicio de inteligencia artificial, agrega tu clave en el archivo `web/.env`:
 ```env
 GEMINI_API_KEY="AQ.Ab8RN6..."
 ```
-Reinicia FastAPI y ¡listo!""",
+Reinicia el servidor para aplicar los cambios.""",
             "motor": "Google Gemini (Requiere API Key)",
             "status": "missing_key"
         }
 
-    system_instruction = f"""Eres GeoCopilot, un asistente sismológico de élite para un sistema Big Data de monitoreo sísmico (Arquitectura Lambda + Medallion).
+    system_instruction = f"""Eres GeoCopilot, analista sismológico del Sistema de Monitoreo Sísmico Global (Arquitectura Lambda + Medallion).
 Tienes acceso en tiempo real a los datos consolidados en la base de datos PostgreSQL Serving Layer.
 
 DATOS REALES EN VIVO DESDE POSTGRESQL:
 {json.dumps(contexto, indent=2, ensure_ascii=False)}
 
-REGLAS DE RESPUESTA:
-1. Responde siempre en español, de forma concisa, profesional y con rigor científico sismológico.
-2. Utiliza los números, magnitudes y coordenadas EXACTAS del JSON de PostgreSQL para fundamentar tus respuestas. Nunca inventes sismos que no estén en los datos.
-3. Si el usuario pide un boletín o reporte oficial, estructúralo de manera formal con dictamen técnico y recomendaciones de prevención.
-4. Si preguntan por la arquitectura, explica con propiedad técnica el flujo de Kafka (Streaming), Airflow (Batch), Spark y MinIO.
-5. Usa viñetas y formato Markdown limpio con emojis técnicos (🚨, 📊, ⚡, 📍, 🟢)."""
+REGLAS ESTRICTAS DE RESPUESTA:
+1. Responde siempre en español, con lenguaje técnico, objetivo, conciso y rigor científico geofísico.
+2. PROHIBIDO USAR EMOJIS en cualquier parte del texto. Utiliza etiquetas técnicas entre corchetes como [ALERTA CRÍTICA], [ESTADO], [PARÁMETROS], [DICTAMEN TÉCNICO].
+3. Utiliza los números, magnitudes y coordenadas EXACTAS del JSON de PostgreSQL para fundamentar tus respuestas. Nunca inventes sismos que no estén en los datos.
+4. Si el usuario pide un boletín o reporte oficial, estructúralo de manera formal con dictamen técnico y recomendaciones de prevención.
+5. Si preguntan por la arquitectura, explica con propiedad técnica el flujo de Kafka (Streaming), Airflow (Batch), Spark y MinIO."""
 
     payload = {
         "contents": [
@@ -173,7 +173,7 @@ REGLAS DE RESPUESTA:
             continue
 
     return {
-        "respuesta": f"⚠️ **Error al consultar Gemini:** {ultimo_error}\nPor favor intenta enviar tu pregunta de nuevo.",
+        "respuesta": f"[ERROR DE CONEXION GEMINI]: {ultimo_error}\nReintente la consulta.",
         "motor": "Google Gemini (Error)",
         "status": "api_error"
     }
