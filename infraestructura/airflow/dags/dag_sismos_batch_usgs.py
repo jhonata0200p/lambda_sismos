@@ -126,6 +126,7 @@ def guardar_en_minio_bronze(**context):
             endpoints_a_probar.append(ep)
 
     credenciales_a_probar = [
+        ("oxkD4UWJsmTRAl5djFtL", "9Fzr4JfLBmOfgkDH4vrzPL0MKBqOg3JkZoSWTkco", "Key Activa MinIO Sayder (oxkD4U...)"),
         (MINIO_ACCESS_KEY, MINIO_SECRET_KEY, "Nueva Key MinIO 10.175.132.248 (n3jTFh...)"),
         ("s65H8jUMyaDoZgPmdkWV", "RdyxisbfivojcjOySPV8d5tX1A3lilPUrXXsEg23", "Key de Servicio (s65H8j...)"),
         ("en108sgUBD48iFaDZu90", "yHV7uQJWapCqWrw7XUGMANpmdV8KQHDKTccQcmCy", "Key de Servicio (en108s...)"),
