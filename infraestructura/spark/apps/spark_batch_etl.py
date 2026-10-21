@@ -9,11 +9,11 @@ Descripción:
   1. Conecta exclusivamente al MinIO central del equipo (10.175.132.248:9000).
   2. Descarga todos los lotes JSON depositados por Airflow en MinIO Bronze (/batch/).
   3. Transforma y limpia a Capa SILVER en formato Parquet particionado por fecha_evento.
-  4. Modela y agrega a Capa GOLD en MinIO (Parquet):
-     - Gold 1: resumen_diario_pais (métricas consolidadas por país y fecha)
-     - Gold 2: zonas_criticas_frecuentes (hotspots por cuadrícula lat/lon con zona_referencia)
-  5. Sube automáticamente los Parquets a los buckets SILVER y GOLD (o golden) en MinIO.
-  6. Escribe en PostgreSQL Serving Layer (10.175.132.244 / localhost) si está accesible.
+  4. Modela y agrega a Capa GOLD en MinIO (Parquet) y PostgreSQL:
+     - Tabla 1: gold_resumen_batch (métricas consolidadas por país y fecha)
+     - Tabla 2: gold_zonas_batch (hotspots por cuadrícula lat/lon con zona_referencia)
+  5. Sube automáticamente a MinIO (buckets silver y gold).
+  6. Escribe en PostgreSQL Serving Layer (10.175.132.248:5432) en las tablas físicas gold.
 """
 
 import os
@@ -23,6 +23,8 @@ import logging
 import time
 from datetime import datetime
 
+import psycopg2
+from psycopg2.extras import execute_batch
 from minio import Minio
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
@@ -46,13 +48,12 @@ MINIO_REMOTE_ENDPOINT = os.getenv("MINIO_ENDPOINT", "10.175.132.248:9000").repla
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "n3jTFho71P8FV8jPHhQC")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "vX4t11jbqRLXRkoTtkW3i6qVvWGvKY9E21tRvm54")
 
-# Configuración PostgreSQL Serving Layer (Jhonatan)
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "10.175.132.244")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
+# Configuración PostgreSQL Serving Layer (Jhonatan en 10.175.132.248)
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "10.175.132.248")
+POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 POSTGRES_DB = os.getenv("POSTGRES_DB", "sismos_db")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres_user")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password123")
-POSTGRES_JDBC_URL = f"jdbc:postgresql://{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
 # Rutas locales temporales de staging en el contenedor Spark
 STAGING_BRONZE_DIR = "/tmp/bronze_batch"
@@ -145,7 +146,6 @@ def subir_directorio_minio(client: Minio, local_dir: str, bucket: str, prefixes:
         logging.info(f"Iniciando subida a s3://{bucket}/{prefix}...")
         for root, _, files in os.walk(local_dir):
             for fname in files:
-                # Omitir archivos temporales de Hadoop/Spark
                 if fname.startswith(".") or fname.endswith(".crc"):
                     continue
                 local_path = os.path.join(root, fname)
@@ -161,8 +161,101 @@ def subir_directorio_minio(client: Minio, local_dir: str, bucket: str, prefixes:
         logging.info(f"Total archivos subidos exitosamente a s3://{bucket}/{prefix}: {subidos}")
 
 
+def cargar_postgresql_batch(df_gold1, df_gold2):
+    """Carga los DataFrames agregados directamente en PostgreSQL (Serving Layer)."""
+    logging.info(f"Iniciando carga a PostgreSQL Serving Layer en {POSTGRES_HOST}:{POSTGRES_PORT}...")
+    try:
+        conn = psycopg2.connect(
+            host=POSTGRES_HOST,
+            port=POSTGRES_PORT,
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            dbname=POSTGRES_DB,
+            connect_timeout=5
+        )
+        cur = conn.cursor()
+
+        # 1. Tabla gold_resumen_batch
+        rows_gold1 = df_gold1.collect()
+        q_gold1 = """
+        INSERT INTO gold_resumen_batch (
+            fecha_evento, pais_estado, total_sismos, magnitud_maxima, 
+            magnitud_promedio, profundidad_promedio_km, total_alertas_tsunami, 
+            sismos_peligrosos_m5, ultima_actualizacion_utc
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+        ON CONFLICT (fecha_evento, pais_estado) DO UPDATE SET
+            total_sismos = EXCLUDED.total_sismos,
+            magnitud_maxima = EXCLUDED.magnitud_maxima,
+            magnitud_promedio = EXCLUDED.magnitud_promedio,
+            profundidad_promedio_km = EXCLUDED.profundidad_promedio_km,
+            total_alertas_tsunami = EXCLUDED.total_alertas_tsunami,
+            sismos_peligrosos_m5 = EXCLUDED.sismos_peligrosos_m5,
+            ultima_actualizacion_utc = CURRENT_TIMESTAMP;
+        """
+        data_gold1 = [
+            (
+                r["fecha_evento"],
+                str(r["pais_estado"])[:100],
+                int(r["total_sismos"]),
+                float(r["magnitud_maxima"]),
+                float(r["magnitud_promedio"]),
+                float(r["profundidad_promedio_km"]),
+                int(r["total_alertas_tsunami"]),
+                int(r["sismos_peligrosos_m5"])
+            )
+            for r in rows_gold1
+        ]
+        execute_batch(cur, q_gold1, data_gold1)
+        conn.commit()
+        logging.info(f"¡ÉXITO! Tabla 'gold_resumen_batch' actualizada en PostgreSQL con {len(data_gold1)} registros.")
+
+        # 2. Tabla gold_zonas_batch
+        rows_gold2 = df_gold2.collect()
+        q_gold2 = """
+        INSERT INTO gold_zonas_batch (
+            cuadricula_lat, cuadricula_lon, zona_referencia, 
+            total_sismos_registrados, sismos_graves_m5, magnitud_maxima, 
+            profundidad_promedio_km, nivel_alerta, fecha_primer_sismo, fecha_ultimo_sismo
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (cuadricula_lat, cuadricula_lon) DO UPDATE SET
+            zona_referencia = EXCLUDED.zona_referencia,
+            total_sismos_registrados = EXCLUDED.total_sismos_registrados,
+            sismos_graves_m5 = EXCLUDED.sismos_graves_m5,
+            magnitud_maxima = EXCLUDED.magnitud_maxima,
+            profundidad_promedio_km = EXCLUDED.profundidad_promedio_km,
+            nivel_alerta = EXCLUDED.nivel_alerta,
+            fecha_primer_sismo = LEAST(gold_zonas_batch.fecha_primer_sismo, EXCLUDED.fecha_primer_sismo),
+            fecha_ultimo_sismo = GREATEST(gold_zonas_batch.fecha_ultimo_sismo, EXCLUDED.fecha_ultimo_sismo);
+        """
+        data_gold2 = [
+            (
+                float(r["cuadricula_lat"]),
+                float(r["cuadricula_lon"]),
+                str(r["zona_referencia"])[:100],
+                int(r["total_sismos_registrados"]),
+                int(r["sismos_graves_m5"]),
+                float(r["magnitud_maxima"]),
+                float(r["profundidad_promedio_km"]),
+                str(r["nivel_alerta"]),
+                r["fecha_primer_sismo"],
+                r["fecha_ultimo_sismo"]
+            )
+            for r in rows_gold2
+        ]
+        execute_batch(cur, q_gold2, data_gold2)
+        conn.commit()
+        logging.info(f"¡ÉXITO! Tabla 'gold_zonas_batch' actualizada en PostgreSQL con {len(data_gold2)} registros.")
+
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logging.error(f"Error conectando o escribiendo en PostgreSQL ({POSTGRES_HOST}:{POSTGRES_PORT}): {e}")
+
+
 def crear_spark_session() -> SparkSession:
-    """Crea la sesion de Apache Spark optimizada para el cluster."""
+    """Crea la sesion de Apache Spark para el cluster."""
     logging.info("Iniciando SparkSession para Kevin_Spark_Batch_ETL...")
     return SparkSession.builder \
         .appName("Kevin_Spark_Batch_ETL") \
@@ -174,12 +267,12 @@ def main():
     print("=" * 80)
     print(">>> INICIANDO PIPELINE BATCH ETL — KEVIN (APACHE SPARK BATCH) <<<")
     print(f">>> Destino MinIO: http://{MINIO_REMOTE_ENDPOINT}")
+    print(f">>> Destino PostgreSQL: {POSTGRES_HOST}:{POSTGRES_PORT} (db: {POSTGRES_DB})")
     print("=" * 80)
 
     # 1. Conectar a MinIO Central
     minio_client = conectar_minio_remoto()
 
-    # Resolver nombres reales de buckets en el servidor
     bucket_bronze = "bronze"
     bucket_silver = "silver"
     bucket_gold = "gold"
@@ -273,16 +366,16 @@ def main():
     logging.info(f"Escribiendo Parquet Silver local en {STAGING_SILVER_DIR}...")
     df_silver.write.mode("overwrite").partitionBy("fecha_evento").parquet(STAGING_SILVER_DIR)
 
-    # Subir a MinIO Capa Silver exclusivamente en s3://silver/batch/fecha_evento=...
+    # Subir a MinIO Capa Silver: s3://silver/batch/fecha_evento=YYYY-MM-DD/
     if minio_client:
         logging.info("Subiendo Parquet de Capa Silver a MinIO...")
         subir_directorio_minio(minio_client, STAGING_SILVER_DIR, bucket=bucket_silver, prefixes=["batch"])
 
     # -------------------------------------------------------------------------
-    # 6. Transformación a Capa GOLD 1: Resumen Diario por País
+    # 6. Transformación a Capa GOLD 1: gold_resumen_batch
     # -------------------------------------------------------------------------
     print("\n" + "-" * 60)
-    print(">>> PROCESANDO CAPA GOLD TABLA 1: resumen_diario_pais <<<")
+    print(">>> PROCESANDO CAPA GOLD TABLA 1: gold_resumen_batch <<<")
     print("-" * 60)
 
     df_gold_diario = df_silver.groupBy("fecha_evento", "pais_estado").agg(
@@ -294,7 +387,7 @@ def main():
         spark_sum(when(col("magnitud") >= 5.0, 1).otherwise(0)).cast("int").alias("sismos_peligrosos_m5")
     ).withColumn("ultima_actualizacion_utc", current_timestamp())
 
-    logging.info(f"Total registros agregados en Gold 1: {df_gold_diario.count()}")
+    logging.info(f"Total registros agregados en Gold 1 (gold_resumen_batch): {df_gold_diario.count()}")
     df_gold_diario.show(5, truncate=False)
 
     if os.path.exists(STAGING_GOLD1_DIR):
@@ -307,14 +400,14 @@ def main():
         subir_directorio_minio(minio_client, STAGING_GOLD1_DIR, bucket=bucket_gold, prefixes=["batch/resumen_diario_pais"])
 
     # -------------------------------------------------------------------------
-    # 7. Transformación a Capa GOLD 2: Zonas Críticas y Hotspots Sísmicos
+    # 7. Transformación a Capa GOLD 2: gold_zonas_batch
     # -------------------------------------------------------------------------
     print("\n" + "-" * 60)
-    print(">>> PROCESANDO CAPA GOLD TABLA 2: zonas_criticas_frecuentes <<<")
+    print(">>> PROCESANDO CAPA GOLD TABLA 2: gold_zonas_batch <<<")
     print("-" * 60)
 
     # Redondear latitud y longitud a 1 decimal (~10 km2) para agrupar fallas
-    # Alineado con init.sql (gold_zonas_batch: primary key cuadricula_lat, cuadricula_lon)
+    # Clave primaria: (cuadricula_lat, cuadricula_lon) con campo descriptivo zona_referencia
     df_gold_hotspots = df_silver.withColumn(
         "cuadricula_lat", spark_round(col("latitud"), 1).cast(DecimalType(5, 1))
     ).withColumn(
@@ -334,7 +427,7 @@ def main():
         .otherwise("NORMAL")
     )
 
-    logging.info(f"Total zonas críticas detectadas en Gold 2: {df_gold_hotspots.count()}")
+    logging.info(f"Total zonas críticas detectadas en Gold 2 (gold_zonas_batch): {df_gold_hotspots.count()}")
     df_gold_hotspots.show(5, truncate=False)
 
     if os.path.exists(STAGING_GOLD2_DIR):
@@ -347,39 +440,12 @@ def main():
         subir_directorio_minio(minio_client, STAGING_GOLD2_DIR, bucket=bucket_gold, prefixes=["batch/zonas_criticas_frecuentes"])
 
     # -------------------------------------------------------------------------
-    # 8. Carga a PostgreSQL (Serving Layer para Jhonatan)
+    # 8. Carga a PostgreSQL Serving Layer (Jhonatan en 10.175.132.248:5432)
     # -------------------------------------------------------------------------
     print("\n" + "-" * 60)
-    print(">>> CARGA A POSTGRESQL (Serving Layer) VIA JDBC <<<")
+    print(">>> CARGA DIRECTA A POSTGRESQL (Serving Layer) <<<")
     print("-" * 60)
-
-    jdbc_properties = {
-        "user": POSTGRES_USER,
-        "password": POSTGRES_PASSWORD,
-        "driver": "org.postgresql.Driver"
-    }
-
-    try:
-        logging.info(f"Escribiendo tabla 'gold_resumen_batch' en PostgreSQL: {POSTGRES_JDBC_URL}")
-        df_gold_diario.write.jdbc(
-            url=POSTGRES_JDBC_URL,
-            table="gold_resumen_batch",
-            mode="overwrite",
-            properties=jdbc_properties
-        )
-        logging.info("¡Tabla 'gold_resumen_batch' escrita exitosamente en PostgreSQL!")
-
-        logging.info(f"Escribiendo tabla 'gold_zonas_batch' en PostgreSQL: {POSTGRES_JDBC_URL}")
-        df_gold_hotspots.write.jdbc(
-            url=POSTGRES_JDBC_URL,
-            table="gold_zonas_batch",
-            mode="overwrite",
-            properties=jdbc_properties
-        )
-        logging.info("¡Tabla 'gold_zonas_batch' escrita exitosamente en PostgreSQL!")
-    except Exception as e:
-        logging.warning(f"Aviso de conexion JDBC hacia PostgreSQL ({POSTGRES_JDBC_URL}): {e}")
-        logging.info("Las tablas quedaron completamente procesadas y guardadas en formato Parquet en MinIO.")
+    cargar_postgresql_batch(df_gold_diario, df_gold_hotspots)
 
     print("\n" + "=" * 80)
     print(">>> PIPELINE BATCH ETL COMPLETADO EXITOSAMENTE — KEVIN <<<")
