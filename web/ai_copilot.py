@@ -5,8 +5,10 @@ from datetime import datetime
 from dotenv import load_dotenv
 from database import get_db
 
-# Cargar variables de entorno desde .env
-load_dotenv()
+# Cargar variables de entorno desde el .env del directorio web
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(dotenv_path=env_path)
+load_dotenv() # Fallback al directorio actual
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
@@ -99,29 +101,29 @@ def consultar_gemini(pregunta: str, contexto: dict) -> dict:
 
     if not api_key:
         return {
-            "respuesta": """⚠️ **Google Gemini no está configurado aún.**
+            "respuesta": """[CONFIGURACIÓN REQUERIDA] Google Gemini no está configurado.
 
-Para usar el chat con Inteligencia Artificial real, necesitas agregar tu clave en el archivo `web/.env`:
+Para habilitar el servicio de inteligencia artificial, agrega tu clave en el archivo `web/.env`:
 ```env
 GEMINI_API_KEY="AQ.Ab8RN6..."
 ```
-Reinicia FastAPI y ¡listo!""",
+Reinicia el servidor para aplicar los cambios.""",
             "motor": "Google Gemini (Requiere API Key)",
             "status": "missing_key"
         }
 
-    system_instruction = f"""Eres GeoCopilot, un asistente sismológico de élite para un sistema Big Data de monitoreo sísmico (Arquitectura Lambda + Medallion).
+    system_instruction = f"""Eres GeoCopilot, analista sismológico del Sistema de Monitoreo Sísmico Global (Arquitectura Lambda + Medallion).
 Tienes acceso en tiempo real a los datos consolidados en la base de datos PostgreSQL Serving Layer.
 
 DATOS REALES EN VIVO DESDE POSTGRESQL:
 {json.dumps(contexto, indent=2, ensure_ascii=False)}
 
-REGLAS DE RESPUESTA:
-1. Responde siempre en español, de forma concisa, profesional y con rigor científico sismológico.
-2. Utiliza los números, magnitudes y coordenadas EXACTAS del JSON de PostgreSQL para fundamentar tus respuestas. Nunca inventes sismos que no estén en los datos.
-3. Si el usuario pide un boletín o reporte oficial, estructúralo de manera formal con dictamen técnico y recomendaciones de prevención.
-4. Si preguntan por la arquitectura, explica con propiedad técnica el flujo de Kafka (Streaming), Airflow (Batch), Spark y MinIO.
-5. Usa viñetas y formato Markdown limpio con emojis técnicos (🚨, 📊, ⚡, 📍, 🟢)."""
+REGLAS ESTRICTAS DE RESPUESTA:
+1. Responde siempre en español, con lenguaje técnico, objetivo, conciso y rigor científico geofísico.
+2. PROHIBIDO USAR EMOJIS en cualquier parte del texto. Utiliza etiquetas técnicas entre corchetes como [ALERTA CRÍTICA], [ESTADO], [PARÁMETROS], [DICTAMEN TÉCNICO].
+3. Utiliza los números, magnitudes y coordenadas EXACTAS del JSON de PostgreSQL para fundamentar tus respuestas. Nunca inventes sismos que no estén en los datos.
+4. Si el usuario pide un boletín o reporte oficial, estructúralo de manera formal con dictamen técnico y recomendaciones de prevención.
+5. Si preguntan por la arquitectura, explica con propiedad técnica el flujo de Kafka (Streaming), Airflow (Batch), Spark y MinIO."""
 
     payload = {
         "contents": [
@@ -140,9 +142,11 @@ REGLAS DE RESPUESTA:
 
     # Modelos oficiales Gemini Flash con fallback automático en caso de demanda alta
     modelos_a_probar = [
-        "gemini-3.6-flash",
-        "gemini-3-flash-preview",
+        "gemini-flash-latest",
+        "gemini-3.5-flash-lite",
         "gemini-3.5-flash",
+        "gemini-3.6-flash",
+        "gemini-3.7-flash",
         "gemini-3.8-flash"
     ]
 
@@ -150,7 +154,7 @@ REGLAS DE RESPUESTA:
     for modelo in modelos_a_probar:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent?key={api_key}"
         try:
-            response = requests.post(url, json=payload, timeout=12)
+            response = requests.post(url, json=payload, timeout=8)
             if response.status_code == 200:
                 data = response.json()
                 texto_gemini = data["candidates"][0]["content"]["parts"][0]["text"]
@@ -173,7 +177,7 @@ REGLAS DE RESPUESTA:
             continue
 
     return {
-        "respuesta": f"⚠️ **Error al consultar Gemini:** {ultimo_error}\nPor favor intenta enviar tu pregunta de nuevo.",
+        "respuesta": f"[ERROR DE CONEXION GEMINI]: {ultimo_error}\nReintente la consulta.",
         "motor": "Google Gemini (Error)",
         "status": "api_error"
     }
