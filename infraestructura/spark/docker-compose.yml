@@ -4,7 +4,24 @@ services:
     container_name: spark_master
     hostname: spark-master
     user: "0:0"
-    command: ["/bin/bash", "-c", "pip install --no-cache-dir psycopg2-binary requests minio && mkdir -p /home/spark/.ivy2/cache /home/spark/.ivy2/jars && chmod -R 777 /home/spark && python3 /opt/spark/apps/spark_trigger_server.py & exec /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master"]
+    command:
+      - /bin/bash
+      - -c
+      - |
+        pip install --no-cache-dir psycopg2-binary requests minio
+        mkdir -p /home/spark/.ivy2/cache /home/spark/.ivy2/jars /root/.ivy2/cache /root/.ivy2/jars
+        chmod -R 777 /home/spark /root/.ivy2
+        python3 /opt/spark/apps/spark_trigger_server.py &
+        (
+          sleep 8
+          while true; do
+            echo ">>> [AUTO-STREAMING] Iniciando Spark Streaming continuo..."
+            /opt/spark/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,org.postgresql:postgresql:42.6.0 /opt/spark/apps/spark_streaming_job.py
+            echo ">>> [AUTO-STREAMING] Job finalizado o desconectado. Reintentando en 5 segundos..."
+            sleep 5
+          done
+        ) &
+        exec /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
     ports:
       - "8080:8080"   # UI Web del Master
       - "7077:7077"   # Puerto interno del Cluster
@@ -15,8 +32,8 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS:-10.175.132.5:9092}
       - KAFKA_TOPIC=${KAFKA_TOPIC:-streaming,sismos_crudos}
       - MINIO_ENDPOINT=${MINIO_ENDPOINT:-10.175.132.248:9000}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-oxkD4UWJsmTRAl5djFtL}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-9Fzr4JfLBmOfgkDH4vrzPL0MKBqOg3JkZoSWTkco}
       - POSTGRES_HOST=${POSTGRES_HOST:-10.175.132.248}
       - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - POSTGRES_DB=${POSTGRES_DB:-sismos_db}
