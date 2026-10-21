@@ -4,7 +4,7 @@ services:
     container_name: spark_master
     hostname: spark-master
     user: "0:0"
-    command: ["/bin/bash", "-c", "mkdir -p /home/spark/.ivy2/cache /home/spark/.ivy2/jars && chmod -R 777 /home/spark && python3 /opt/spark/apps/spark_trigger_server.py & exec /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master"]
+    command: ["/bin/bash", "-c", "pip install --no-cache-dir psycopg2-binary requests minio && mkdir -p /home/spark/.ivy2/cache /home/spark/.ivy2/jars && chmod -R 777 /home/spark && python3 /opt/spark/apps/spark_trigger_server.py & exec /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master"]
     ports:
       - "8080:8080"   # UI Web del Master
       - "7077:7077"   # Puerto interno del Cluster
@@ -32,7 +32,8 @@ services:
     image: apache/spark:3.5.0
     container_name: spark_worker_1
     hostname: spark-worker-1
-    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.worker.Worker", "spark://spark-master:7077"]
+    user: "0:0"
+    command: ["/bin/bash", "-c", "pip install --no-cache-dir psycopg2-binary requests minio && /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077"]
     environment:
       - SPARK_WORKER_CORES=2
       - SPARK_WORKER_MEMORY=2g
