@@ -1,5 +1,7 @@
 import os
 import json
+import shutil
+from minio import Minio
 import psycopg2
 from psycopg2.extras import execute_batch
 from pyspark.sql import SparkSession
@@ -94,6 +96,57 @@ df_silver = df_parsed.select(
     col("feature.properties.tsunami").alias("alerta_tsunami")
 ).filter(col("id_sismo").isNotNull())
 
+
+# ---------------------------------------------------------
+# 4.1 Funciones Auxiliares para MinIO Fallback
+# ---------------------------------------------------------
+def obtener_cliente_minio():
+    endpoint_clean = MINIO_ENDPOINT.replace("http://", "").replace("https://", "").rstrip("/")
+    try:
+        return Minio(
+            endpoint_clean,
+            access_key=MINIO_ACCESS_KEY,
+            secret_key=MINIO_SECRET_KEY,
+            secure=False
+        )
+    except Exception as e:
+        print(f"Error inicializando MinIO client: {e}")
+        return None
+
+
+def subir_a_minio_fallback(df, local_dir, bucket, prefix, partition_by=None):
+    """Guarda en staging local y sube a MinIO vía cliente nativo si falla S3A."""
+    try:
+        client = obtener_cliente_minio()
+        if not client:
+            return
+        if os.path.exists(local_dir):
+            shutil.rmtree(local_dir, ignore_errors=True)
+        writer = df.write.mode("append")
+        if partition_by:
+            writer = writer.partitionBy(partition_by)
+        writer.parquet(local_dir)
+
+        if not client.bucket_exists(bucket):
+            client.make_bucket(bucket)
+
+        subidos = 0
+        for root, _, files in os.walk(local_dir):
+            for fname in files:
+                if fname.startswith(".") or fname.endswith(".crc"):
+                    continue
+                local_path = os.path.join(root, fname)
+                rel_path = os.path.relpath(local_path, local_dir).replace("\\", "/")
+                remote_key = f"{prefix.rstrip('/')}/{rel_path}" if prefix else rel_path
+                client.fput_object(bucket, remote_key, local_path)
+                subidos += 1
+        print(f"✓ MinIO Fallback: Subidos {subidos} archivos a s3://{bucket}/{prefix}")
+    except Exception as e:
+        print(f"Error en subida MinIO fallback ({bucket}/{prefix}): {e}")
+    finally:
+        if os.path.exists(local_dir):
+            shutil.rmtree(local_dir, ignore_errors=True)
+
 # ---------------------------------------------------------
 # 5. Función de procesamiento por micro-lote
 # ---------------------------------------------------------
@@ -112,7 +165,8 @@ def procesar_microbatch(batch_df, batch_id):
             .partitionBy("fecha_evento") \
             .parquet("s3a://silver/streaming/fact_sismos/")
     except Exception as e:
-        print(f"Error escribiendo Silver en MinIO: {e}")
+        print(f"S3A no disponible para Silver ({e}). Usando fallback cliente MinIO...")
+        subir_a_minio_fallback(batch_df_unique, f"/tmp/staging_stream/silver_{batch_id}", bucket="silver", prefix="streaming/fact_sismos", partition_by="fecha_evento")
 
     # --- B. AGREGACIÓN 1: Resumen Diario (Gold) ---
     df_resumen = batch_df_unique.withColumn(
@@ -136,7 +190,8 @@ def procesar_microbatch(batch_df, batch_id):
             .partitionBy("fecha_evento") \
             .parquet("s3a://gold/streaming/resumen_diario_pais/")
     except Exception as e:
-        print(f"Error escribiendo Gold Resumen en MinIO: {e}")
+        print(f"S3A no disponible para Gold Resumen ({e}). Usando fallback cliente MinIO...")
+        subir_a_minio_fallback(df_resumen, f"/tmp/staging_stream/gold1_{batch_id}", bucket="gold", prefix="streaming/resumen_diario_pais", partition_by="fecha_evento")
 
     # --- C. ESCRITURA EN POSTGRESQL REMOTO (gold_resumen_streaming) ---
     rows_resumen = df_resumen.collect()
@@ -218,7 +273,8 @@ def procesar_microbatch(batch_df, batch_id):
             .mode("append") \
             .parquet("s3a://gold/streaming/zonas_criticas_frecuentes/")
     except Exception as e:
-        print(f"Error escribiendo Gold Zonas en MinIO: {e}")
+        print(f"S3A no disponible para Gold Zonas ({e}). Usando fallback cliente MinIO...")
+        subir_a_minio_fallback(df_zonas, f"/tmp/staging_stream/gold2_{batch_id}", bucket="gold", prefix="streaming/zonas_criticas_frecuentes")
 
     # --- E. ESCRITURA EN POSTGRESQL REMOTO (gold_zonas_streaming) ---
     rows_zonas = df_zonas.collect()
