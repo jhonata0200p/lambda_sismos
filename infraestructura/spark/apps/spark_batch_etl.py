@@ -445,7 +445,31 @@ def main():
     print("\n" + "-" * 60)
     print(">>> CARGA DIRECTA A POSTGRESQL (Serving Layer) <<<")
     print("-" * 60)
+    
     cargar_postgresql_batch(df_gold_diario, df_gold_hotspots)
+
+    # -------------------------------------------------------------------------
+    # 9. Notificacion de Linaje a Apache Atlas (Gobernanza)
+    # -------------------------------------------------------------------------
+    try:
+        from atlas_hook import notificar_proceso_atlas
+        notificar_proceso_atlas(
+            proceso_nombre="spark_batch_etl",
+            proceso_tipo="Process",
+            inputs=[
+                {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://bronze/batch/@minio"}}
+            ],
+            outputs=[
+                {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://silver/batch/fact_sismos/@minio"}},
+                {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://gold/batch/resumen_diario_pais/@minio"}},
+                {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://gold/batch/zonas_criticas_frecuentes/@minio"}},
+                {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "postgres://sismos_db/gold_resumen_batch@postgres"}},
+                {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "postgres://sismos_db/gold_zonas_batch@postgres"}}
+            ],
+            descripcion="Procesamiento Spark Batch: Bronze -> Silver -> Gold y PostgreSQL"
+        )
+    except Exception as e_atlas:
+        logging.info(f"Atlas no disponible o error menor: {e_atlas}")
 
     print("\n" + "=" * 80)
     print(">>> PIPELINE BATCH ETL COMPLETADO EXITOSAMENTE — KEVIN <<<")

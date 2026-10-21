@@ -293,4 +293,25 @@ query = df_silver.writeStream \
     .option("checkpointLocation", "/tmp/spark_checkpoints/streaming_pipeline") \
     .start()
 
+# Notificar Linaje Streaming inicial a Apache Atlas
+try:
+    from atlas_hook import notificar_proceso_atlas
+    notificar_proceso_atlas(
+        proceso_nombre="spark_streaming_pipeline",
+        proceso_tipo="Process",
+        inputs=[
+            {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "kafka://sismos_crudos@kafka"}}
+        ],
+        outputs=[
+            {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://silver/streaming/fact_sismos/@minio"}},
+            {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://gold/streaming/resumen_diario_pais/@minio"}},
+            {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://gold/streaming/zonas_criticas_frecuentes/@minio"}},
+            {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "postgres://sismos_db/gold_resumen_streaming@postgres"}},
+            {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "postgres://sismos_db/gold_zonas_streaming@postgres"}}
+        ],
+        descripcion="PySpark Structured Streaming: Kafka topic 'sismos_crudos' -> Silver Parquet -> Gold Analytics y PostgreSQL"
+    )
+except Exception as e_atlas:
+    print(f"[Atlas Hook] Omitiendo reporte streaming: {e_atlas}")
+
 query.awaitTermination()
