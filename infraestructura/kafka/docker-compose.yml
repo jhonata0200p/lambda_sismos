@@ -27,7 +27,7 @@ services:
       - kafka_data:/tmp/kraft-combined-logs
     restart: always
 
-  # Contenedor de inicialización que garantiza que el topic exista antes de que nadie escriba
+  # Contenedor de inicialización que garantiza que el topic oficial exista antes de que nadie escriba
   kafka-init-topic:
     image: confluentinc/cp-kafka:7.5.0
     container_name: kafka_init_topic
@@ -42,27 +42,7 @@ services:
         cub kafka-ready -b kafka_broker:29092 1 30
         echo "Creando topic sismos_crudos si no existe..."
         kafka-topics --bootstrap-server kafka_broker:29092 --create --if-not-exists --topic sismos_crudos --partitions 1 --replication-factor 1
-        echo "Creando topic streaming si no existe..."
-        kafka-topics --bootstrap-server kafka_broker:29092 --create --if-not-exists --topic streaming --partitions 1 --replication-factor 1
-        echo "Topics sismos_crudos y streaming listos."
-
-  # Puente en vivo que mantiene sincronizado streaming con sismos_crudos
-  kafka-topic-sync:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka_topic_sync
-    networks:
-      - red_compartida
-    depends_on:
-      - kafka
-      - kafka-init-topic
-    restart: always
-    command:
-      - bash
-      - -c
-      - |
-        cub kafka-ready -b kafka_broker:29092 1 30
-        echo "Iniciando sincronizacion streaming -> sismos_crudos..."
-        kafka-console-consumer --bootstrap-server kafka_broker:29092 --topic streaming --from-beginning | kafka-console-producer --bootstrap-server kafka_broker:29092 --topic sismos_crudos
+        echo "Topic oficial sismos_crudos listo."
 
   kafka-connect:
     image: confluentinc/cp-kafka-connect:7.5.0

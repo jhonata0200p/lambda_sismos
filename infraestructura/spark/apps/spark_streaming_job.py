@@ -21,8 +21,8 @@ import os
 
 # Kafka de Josué (IP terminada en .5)
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "10.175.132.5:9092")
-# Suscribirse a 'streaming' y 'sismos_crudos' para garantizar captura completa
-KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "streaming,sismos_crudos")
+# Topic oficial Kafka: sismos_crudos
+KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "sismos_crudos")
 
 # MinIO Data Lake de Sayder (10.175.132.248)
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://10.175.132.248:9000")
