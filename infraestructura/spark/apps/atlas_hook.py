@@ -45,7 +45,7 @@ def notificar_proceso_atlas(
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
     now_iso = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-    qualified_name = f"{proceso_nombre}@{ATLAS_HOST}"
+    qualified_name = f"{proceso_nombre}@spark"
 
     payload = {
         "entity": {

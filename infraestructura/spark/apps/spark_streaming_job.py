@@ -6,7 +6,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col, from_json, explode, to_date, from_unixtime,
     round as spark_round, count, max as spark_max, avg,
-    when, coalesce, lit, split, trim, sum as spark_sum, min as spark_min
+    when, coalesce, lit, split, trim, sum as spark_sum, min as spark_min, current_timestamp
 )
 from pyspark.sql.types import (
     StructType, StructField, StringType, DoubleType,
@@ -134,7 +134,7 @@ def procesar_microbatch(batch_df, batch_id):
         avg("profundidad_km").alias("profundidad_promedio_km"),
         spark_sum(when(col("alerta_tsunami") > 0, 1).otherwise(0)).alias("total_alertas_tsunami"),
         spark_sum(when(col("magnitud") >= 5.0, 1).otherwise(0)).alias("sismos_peligrosos_m5")
-    )
+    ).withColumn("ultima_actualizacion_utc", current_timestamp())
 
     # --- AGREGACIÓN 2: Zonas Críticas (Gold) ---
     df_zonas = batch_df_unique.withColumn("cuadricula_lat", spark_round(col("latitud"), 1)) \

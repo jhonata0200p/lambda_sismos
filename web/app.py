@@ -246,7 +246,8 @@ def simular_streaming_insert():
                         sismos_graves_m5 = gold_zonas_streaming.sismos_graves_m5 + EXCLUDED.sismos_graves_m5,
                         magnitud_maxima = GREATEST(gold_zonas_streaming.magnitud_maxima, EXCLUDED.magnitud_maxima),
                         nivel_alerta = EXCLUDED.nivel_alerta,
-                        fecha_ultimo_sismo = NOW();
+                        fecha_ultimo_sismo = NOW(),
+                        ultima_actualizacion_utc = NOW();
                 """, (region["lat"], region["lon"], region["zona"], es_grave, magnitud, profundidad, nivel_alerta))
 
                 conn.commit()
