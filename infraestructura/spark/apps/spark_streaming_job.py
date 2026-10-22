@@ -147,9 +147,9 @@ def procesar_microbatch(batch_df, batch_id):
                                   avg("profundidad_km").alias("profundidad_promedio_km"),
                                   spark_min("timestamp_evento").alias("fecha_primer_sismo"),
                                   spark_max("timestamp_evento").alias("fecha_ultimo_sismo"),
-                                  when(spark_max("magnitud") >= 6.0, "ALTA")
-                                  .when(spark_max("magnitud") >= 4.5, "MEDIA")
-                                  .otherwise("BAJA").alias("nivel_alerta")
+                                  when((spark_sum(when(col("magnitud") >= 5.0, 1).otherwise(0)) > 0) | (count("id_sismo") >= 15), "CRITICO")
+                                  .when(spark_max("magnitud") >= 4.0, "MODERADO")
+                                  .otherwise("NORMAL").alias("nivel_alerta")
                               )
 
     # --- PASO 1: ESCRITURA INMEDIATA EN POSTGRESQL (Serving Layer) ---
@@ -231,9 +231,10 @@ def procesar_microbatch(batch_df, batch_id):
                 INSERT INTO gold_zonas_streaming (
                     cuadricula_lat, cuadricula_lon, zona_referencia, 
                     total_sismos_registrados, sismos_graves_m5, magnitud_maxima, 
-                    profundidad_promedio_km, nivel_alerta, fecha_primer_sismo, fecha_ultimo_sismo
+                    profundidad_promedio_km, nivel_alerta, fecha_primer_sismo, fecha_ultimo_sismo,
+                    ultima_actualizacion_utc
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 ON CONFLICT (cuadricula_lat, cuadricula_lon) DO UPDATE SET
                     zona_referencia = EXCLUDED.zona_referencia,
                     profundidad_promedio_km = (
@@ -244,12 +245,14 @@ def procesar_microbatch(batch_df, batch_id):
                     sismos_graves_m5 = gold_zonas_streaming.sismos_graves_m5 + EXCLUDED.sismos_graves_m5,
                     magnitud_maxima = GREATEST(gold_zonas_streaming.magnitud_maxima, EXCLUDED.magnitud_maxima),
                     nivel_alerta = CASE 
-                        WHEN GREATEST(gold_zonas_streaming.magnitud_maxima, EXCLUDED.magnitud_maxima) >= 6.0 THEN 'ALTA'
-                        WHEN GREATEST(gold_zonas_streaming.magnitud_maxima, EXCLUDED.magnitud_maxima) >= 4.5 THEN 'MEDIA'
-                        ELSE 'BAJA'
+                        WHEN (gold_zonas_streaming.sismos_graves_m5 + EXCLUDED.sismos_graves_m5) > 0 
+                             OR (gold_zonas_streaming.total_sismos_registrados + EXCLUDED.total_sismos_registrados) >= 15 THEN 'CRITICO'
+                        WHEN GREATEST(gold_zonas_streaming.magnitud_maxima, EXCLUDED.magnitud_maxima) >= 4.0 THEN 'MODERADO'
+                        ELSE 'NORMAL'
                     END,
                     fecha_primer_sismo = LEAST(gold_zonas_streaming.fecha_primer_sismo, EXCLUDED.fecha_primer_sismo),
-                    fecha_ultimo_sismo = GREATEST(gold_zonas_streaming.fecha_ultimo_sismo, EXCLUDED.fecha_ultimo_sismo);
+                    fecha_ultimo_sismo = GREATEST(gold_zonas_streaming.fecha_ultimo_sismo, EXCLUDED.fecha_ultimo_sismo),
+                    ultima_actualizacion_utc = CURRENT_TIMESTAMP;
             """
             data_zonas = [
                 (

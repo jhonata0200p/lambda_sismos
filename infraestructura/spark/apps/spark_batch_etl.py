@@ -227,7 +227,8 @@ def cargar_postgresql_batch(df_gold1, df_gold2):
             profundidad_promedio_km = EXCLUDED.profundidad_promedio_km,
             nivel_alerta = EXCLUDED.nivel_alerta,
             fecha_primer_sismo = LEAST(gold_zonas_batch.fecha_primer_sismo, EXCLUDED.fecha_primer_sismo),
-            fecha_ultimo_sismo = GREATEST(gold_zonas_batch.fecha_ultimo_sismo, EXCLUDED.fecha_ultimo_sismo);
+            fecha_ultimo_sismo = GREATEST(gold_zonas_batch.fecha_ultimo_sismo, EXCLUDED.fecha_ultimo_sismo),
+            ultima_actualizacion_utc = CURRENT_TIMESTAMP;
         """
         data_gold2 = [
             (
