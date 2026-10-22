@@ -11,6 +11,7 @@
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script id="tailwind-config">
     tailwind.config = {
@@ -60,21 +61,30 @@
       animation: pulse-ring 3.2s cubic-bezier(0.2, 0.7, 0.4, 1) infinite 2.1s;
       transform-origin: center;
     }
+    @keyframes emergency-pulse {
+      0% { box-shadow: inset 0 0 25px 6px rgba(239, 68, 68, 0.75); }
+      50% { box-shadow: inset 0 0 65px 20px rgba(239, 68, 68, 0.98); }
+      100% { box-shadow: inset 0 0 25px 6px rgba(239, 68, 68, 0.75); }
+    }
+    .screen-emergency {
+      animation: emergency-pulse 1.3s ease-in-out infinite;
+    }
     .hud-glass {
-      background: rgba(12, 24, 38, 0.84);
+      background: rgba(12, 24, 38, 0.88);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04);
+      box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
     }
     .custom-scroll::-webkit-scrollbar {
-      width: 4px;
+      width: 5px;
+      height: 5px;
     }
     .custom-scroll::-webkit-scrollbar-track {
-      background: rgba(10, 25, 38, 0.3);
+      background: rgba(10, 25, 38, 0.4);
     }
     .custom-scroll::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.22);
       border-radius: 9999px;
     }
     #map {
@@ -111,6 +121,9 @@
 </head>
 <body class="h-full w-full overflow-hidden bg-[#07131e] font-body text-slate-100 antialiased select-none">
 
+<!-- OVERLAY DE ALERTA DE EMERGENCIA (BORDES PULSANTES ROJOS EN MW >= 6.0) -->
+<div id="screen-alert-overlay" class="pointer-events-none fixed inset-0 z-30 transition-all duration-500 opacity-0"></div>
+
 <!-- CONTENEDOR MAESTRO DE MAPA GIS EN PANTALLA COMPLETA -->
 <div class="relative w-screen h-screen overflow-hidden">
 
@@ -118,7 +131,7 @@
   <div id="map" class="absolute inset-0 z-0"></div>
 
   <!-- ================================================================= -->
-  <!-- 1. BARRA SUPERIOR HUD: ESTADO GLOBAL, CONMUTADORES & BÚSQUEDA -->
+  <!-- 1. BARRA SUPERIOR HUD: ESTADO GLOBAL, CONMUTADORES & AUDITORÍA -->
   <!-- ================================================================= -->
   <header class="absolute top-4 left-4 right-4 z-30 pointer-events-none flex items-center justify-between gap-3">
     <!-- Identificador TerraPulse GIS -->
@@ -141,19 +154,44 @@
       </div>
     </div>
 
-    <!-- Conmutador Rápido de Capas -->
+    <!-- Barra de Controles Tácticos y Vistas -->
     <div class="pointer-events-auto hidden md:flex items-center hud-glass rounded-2xl p-1 gap-1">
       <button id="btn-toggle-plates" onclick="toggleTectonicPlates()" class="px-3 py-1.5 rounded-xl bg-emerald-600/90 text-white font-mono-geo text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
-        <span class="material-symbols-outlined text-[16px]">public</span> Fallas Tectónicas
+        <span class="material-symbols-outlined text-[16px]">public</span> Fallas
       </button>
+
       <button id="btn-toggle-tiles" onclick="cycleBasemap()" class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 font-mono-geo text-xs font-medium transition flex items-center gap-1.5" title="Alternar mapa base libre sin API key">
         <span class="material-symbols-outlined text-[16px] text-sky-400">map</span> <span id="basemap-label">Gris Táctico</span>
       </button>
+
+      <!-- Auditoría Lambda -->
+      <button onclick="toggleModalLambda()" class="px-3 py-1.5 rounded-xl text-cyan-300 hover:text-white hover:bg-cyan-500/15 border border-cyan-500/30 font-mono-geo text-xs font-medium transition flex items-center gap-1.5" title="Consola de Deduplicacion Lambda (Streaming vs Batch)">
+        <span class="material-symbols-outlined text-[16px] text-cyan-400">terminal</span> Consola Lambda
+      </button>
+
+      <!-- Analítica Gold -->
+      <button onclick="toggleModalAnalitica()" class="px-3 py-1.5 rounded-xl text-amber-300 hover:text-white hover:bg-amber-500/15 border border-amber-500/30 font-mono-geo text-xs font-medium transition flex items-center gap-1.5" title="Métricas y Gráficos Capa Gold">
+        <span class="material-symbols-outlined text-[16px] text-amber-400">insights</span> Analítica Gold
+      </button>
+
+      <!-- Exportación CSV -->
+      <button onclick="exportarCSV()" class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 font-mono-geo text-xs font-medium transition flex items-center gap-1.5" title="Descargar reporte sismico en formato CSV">
+        <span class="material-symbols-outlined text-[16px] text-emerald-400">download</span> Exportar CSV
+      </button>
+
+      <!-- Linaje Apache Atlas -->
+      <a href="http://localhost:21000" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-xl bg-purple-950/50 hover:bg-purple-900/70 text-purple-300 border border-purple-500/40 font-mono-geo text-xs font-semibold flex items-center gap-1.5 transition shadow-sm" title="Abrir Apache Atlas en localhost:21000">
+        <span class="material-symbols-outlined text-[16px] text-purple-400">account_tree</span> Atlas Linaje
+      </a>
+
+      <!-- Simulación Streaming -->
       <button id="btn-simular" onclick="simularStreaming()" class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 font-mono-geo text-xs font-medium transition flex items-center gap-1.5">
         <span class="material-symbols-outlined text-[16px] text-amber-400">bolt</span> Simular Streaming
       </button>
-      <button onclick="refreshData()" class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 font-mono-geo text-xs font-medium transition flex items-center gap-1.5" title="Recargar métricas">
-        <span class="material-symbols-outlined text-[16px]">refresh</span> Sincronizar
+
+      <!-- Sincronizar -->
+      <button onclick="refreshData()" class="px-2.5 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 font-mono-geo text-xs font-medium transition flex items-center gap-1" title="Sincronizar telemetria">
+        <span class="material-symbols-outlined text-[16px]">refresh</span>
       </button>
     </div>
 
@@ -161,7 +199,7 @@
     <div class="pointer-events-auto flex items-center gap-2">
       <div class="relative hidden sm:block">
         <span class="material-symbols-outlined absolute left-3 top-2 text-slate-400 text-[18px]">search</span>
-        <input id="input-buscar" onkeyup="filtrarZonas(this.value)" class="hud-glass pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-400 rounded-xl w-52 focus:w-64 focus:outline-none focus:ring-1 focus:ring-emerald-400 transition-all font-body" placeholder="Buscar falla o país..." type="text"/>
+        <input id="input-buscar" onkeyup="filtrarZonas(this.value)" class="hud-glass pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-400 rounded-xl w-48 focus:w-60 focus:outline-none focus:ring-1 focus:ring-emerald-400 transition-all font-body" placeholder="Buscar falla o país..." type="text"/>
       </div>
       <button onclick="enfocarCriticoPrincipal()" class="hud-glass w-9 h-9 rounded-xl flex items-center justify-center text-slate-200 hover:text-white hover:bg-white/10 transition" title="Centrar Epicentro Mayor">
         <span class="material-symbols-outlined text-[20px] text-rose-400">my_location</span>
@@ -171,6 +209,31 @@
       </button>
     </div>
   </header>
+
+  <!-- ================================================================= -->
+  <!-- BANNER TÁCTICO DE ALERTA SÍSMICA TEMPRANA (EMERGENCIA MW >= 6.0) -->
+  <!-- ================================================================= -->
+  <div id="early-warning-banner" class="hidden absolute top-20 left-1/2 -translate-x-1/2 z-40 max-w-2xl w-[92%] pointer-events-auto transition-all duration-300">
+    <div class="hud-glass bg-rose-950/90 border-2 border-rose-500 rounded-2xl p-3.5 shadow-2xl flex items-center justify-between gap-3 animate-bounce">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-600 flex items-center justify-center text-white shrink-0 shadow-lg shadow-rose-950">
+          <span class="material-symbols-outlined text-[24px]">crisis_alert</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-mono-geo font-bold text-xs uppercase tracking-widest text-rose-300">Alerta Sísmica Temprana Activa</span>
+            <span id="early-warning-mag" class="px-2 py-0.5 rounded-md bg-rose-500 text-white font-mono-geo font-black text-xs">6.4 Mw</span>
+          </div>
+          <p id="early-warning-text" class="text-xs text-white font-body mt-0.5 leading-snug">
+            Sismo mayor registrado en Costa de Pochutla, Oaxaca. Protocolo de monitoreo costero activado.
+          </p>
+        </div>
+      </div>
+      <button onclick="dismissEarlyWarning()" class="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-mono-geo font-bold text-white transition shrink-0">
+        Entendido
+      </button>
+    </div>
+  </div>
 
   <!-- ================================================================= -->
   <!-- 2. TARJETA FLOTANTE SUPERIOR IZQUIERDA: SISMO CRÍTICO EN MONITOREO -->
@@ -246,7 +309,6 @@
 
       <!-- Lista Escroleable de Sismos -->
       <div id="lista-sismos" class="space-y-1.5 max-h-48 overflow-y-auto pr-1 custom-scroll">
-        <!-- Renderizado dinámico desde PostgreSQL -->
         <div class="p-2.5 rounded-xl bg-black/25 text-center text-xs text-slate-400 font-mono-geo">
           Cargando telemetría sísmica...
         </div>
@@ -255,7 +317,7 @@
   </div>
 
   <!-- ================================================================= -->
-  <!-- 4. LEYENDA TECTÓNICA Y ESCALA DE MAGNITUDES (CENTRO INFERIOR) -->
+  <!-- 4. LEYENDA TECTÓNICA Y FILTROS INTERACTIVOS DE MAGNITUD (CENTRO) -->
   <!-- ================================================================= -->
   <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-auto hidden lg:flex items-center gap-3">
     <!-- Leyenda de Tipos de Falla -->
@@ -275,25 +337,29 @@
       </div>
     </div>
 
-    <!-- Leyenda de Magnitudes -->
-    <div class="hud-glass rounded-2xl px-3.5 py-2 flex items-center gap-3 text-xs font-mono-geo">
-      <span class="text-[10px] uppercase font-bold text-slate-400">Magnitud:</span>
-      <div class="flex items-center gap-1">
-        <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
-        <span class="text-slate-300">&lt; 4.0</span>
-      </div>
-      <div class="flex items-center gap-1">
-        <span class="w-3 h-3 rounded-full bg-emerald-400"></span>
-        <span class="text-slate-300">4.0-4.9</span>
-      </div>
-      <div class="flex items-center gap-1">
-        <span class="w-3.5 h-3.5 rounded-full bg-amber-400"></span>
-        <span class="text-slate-300">5.0-5.9</span>
-      </div>
-      <div class="flex items-center gap-1">
-        <span class="w-4 h-4 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50 animate-pulse"></span>
-        <span class="text-rose-400 font-bold">&gt;= 6.0 Fuerte</span>
-      </div>
+    <!-- Chips Interactivos de Magnitud (Filtros en Vivo) -->
+    <div class="hud-glass rounded-2xl px-3.5 py-1.5 flex items-center gap-2 text-xs font-mono-geo">
+      <span class="text-[10px] uppercase font-bold text-slate-400 mr-1">Filtrar:</span>
+      
+      <button onclick="filtrarPorMagnitud(null, null, this)" class="mag-chip px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-bold transition flex items-center gap-1">
+        Todas
+      </button>
+
+      <button onclick="filtrarPorMagnitud(0, 3.99, this)" class="mag-chip px-2.5 py-1 rounded-xl bg-black/30 border border-white/5 text-slate-300 hover:text-white hover:border-sky-400/50 transition flex items-center gap-1.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span> &lt; 4.0
+      </button>
+
+      <button onclick="filtrarPorMagnitud(4.0, 4.99, this)" class="mag-chip px-2.5 py-1 rounded-xl bg-black/30 border border-white/5 text-slate-300 hover:text-white hover:border-emerald-400/50 transition flex items-center gap-1.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> 4.0 - 4.9
+      </button>
+
+      <button onclick="filtrarPorMagnitud(5.0, 5.99, this)" class="mag-chip px-2.5 py-1 rounded-xl bg-black/30 border border-white/5 text-slate-300 hover:text-white hover:border-amber-400/50 transition flex items-center gap-1.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> 5.0 - 5.9
+      </button>
+
+      <button onclick="filtrarPorMagnitud(6.0, 10.0, this)" class="mag-chip px-2.5 py-1 rounded-xl bg-black/30 border border-white/5 text-rose-300 hover:text-white hover:border-rose-400/50 font-bold transition flex items-center gap-1.5">
+        <span class="w-3 h-3 rounded-full bg-rose-500 animate-pulse"></span> &gt;= 6.0 Fuerte
+      </button>
     </div>
   </div>
 
@@ -319,9 +385,160 @@
   </div>
 
   <!-- ================================================================= -->
-  <!-- 6. AGENTE INTELIGENTE IA (GEOIA) EN LA ESQUINA INFERIOR DERECHA -->
+  <!-- 6. MODAL AUDITORÍA LAMBDA: DEDUPLICACIÓN STREAMING VS BATCH -->
   <!-- ================================================================= -->
-  <!-- Ventana Emergente de Asistencia Rápida (Ocultable) -->
+  <div id="modal-lambda" class="hidden fixed inset-0 z-50 pointer-events-auto flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+    <div class="hud-glass rounded-3xl w-full max-w-5xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl border-cyan-500/30">
+      <!-- Encabezado Modal -->
+      <div class="p-5 border-b border-white/10 flex items-center justify-between bg-black/40">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-400 flex items-center justify-center">
+            <span class="material-symbols-outlined text-[22px]">terminal</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="font-headline font-bold text-lg text-white">Consola de Auditoría Lambda</h2>
+              <span class="text-[10px] font-mono-geo px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold uppercase">Serving Layer</span>
+            </div>
+            <p class="text-xs text-slate-300 font-mono-geo">
+              Deduplicación activa en <code class="text-cyan-300">vista_resumen_diario_pais</code>: STREAMING prevalece en tiempo real sobre BATCH histórico.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="cargarVistaUnificada()" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono-geo text-slate-200 transition flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[16px]">refresh</span> Actualizar
+          </button>
+          <button onclick="toggleModalLambda()" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Resumen Estadístico de Deduplicación -->
+      <div class="px-5 py-3 bg-cyan-950/20 border-b border-white/5 flex items-center justify-between text-xs font-mono-geo">
+        <div class="flex items-center gap-4">
+          <span class="flex items-center gap-1.5 text-cyan-300">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Streaming Activo: <strong id="lambda-count-streaming">0</strong>
+          </span>
+          <span class="flex items-center gap-1.5 text-purple-300">
+            <span class="w-2 h-2 rounded-full bg-purple-400"></span> Batch Consolidado: <strong id="lambda-count-batch">0</strong>
+          </span>
+          <span class="text-slate-400">
+            Total Registros Unificados: <strong id="lambda-count-total" class="text-white">0</strong>
+          </span>
+        </div>
+        <span class="text-[11px] text-slate-400">
+          Clave Primaria: <span class="text-slate-200">(fecha_evento, pais_estado)</span>
+        </span>
+      </div>
+
+      <!-- Tabla Escroleable de Auditoría -->
+      <div class="flex-1 overflow-y-auto p-5 custom-scroll">
+        <table class="w-full text-left font-mono-geo text-xs">
+          <thead>
+            <tr class="text-slate-400 border-b border-white/10 pb-2">
+              <th class="py-2 px-3 font-semibold">Origen Dato</th>
+              <th class="py-2 px-3 font-semibold">Fecha Evento</th>
+              <th class="py-2 px-3 font-semibold">País / Región</th>
+              <th class="py-2 px-3 font-semibold text-center">Sismos</th>
+              <th class="py-2 px-3 font-semibold text-center">Mag Máx</th>
+              <th class="py-2 px-3 font-semibold text-center">Profundidad</th>
+              <th class="py-2 px-3 font-semibold text-center">Tsunami</th>
+              <th class="py-2 px-3 font-semibold text-center">M5+</th>
+              <th class="py-2 px-3 font-semibold">Última Actualización UTC</th>
+            </tr>
+          </thead>
+          <tbody id="lambda-table-body" class="divide-y divide-white/5">
+            <tr>
+              <td colspan="9" class="py-8 text-center text-slate-400">Consultando PostgreSQL Serving Layer...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- 7. MODAL ANALÍTICA GOLD: GRÁFICOS INTERACTIVOS (CHART.JS) -->
+  <!-- ================================================================= -->
+  <div id="modal-analitica" class="hidden fixed inset-0 z-50 pointer-events-auto flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+    <div class="hud-glass rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl border-amber-500/30">
+      <!-- Encabezado Modal -->
+      <div class="p-5 border-b border-white/10 flex items-center justify-between bg-black/40">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-400 flex items-center justify-center">
+            <span class="material-symbols-outlined text-[22px]">insights</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="font-headline font-bold text-lg text-white">Métricas Analíticas Capa Gold</h2>
+              <span class="text-[10px] font-mono-geo px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold uppercase">Consumo OLAP</span>
+            </div>
+            <p class="text-xs text-slate-300 font-mono-geo">
+              Agregaciones de alto rendimiento calculadas por Spark Streaming & Batch, servidas en PostgreSQL.
+            </p>
+          </div>
+        </div>
+        <button onclick="toggleModalAnalitica()" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Gráficos Bento Grid -->
+      <div class="flex-1 overflow-y-auto p-5 custom-scroll space-y-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- Gráfico 1: Top Países con Mayor Sismicidad -->
+          <div class="bg-black/40 rounded-2xl p-4 border border-white/5">
+            <div class="flex items-center justify-between mb-3">
+              <span class="font-headline font-semibold text-sm text-white flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[18px] text-cyan-400">bar_chart</span>
+                Top Países por Actividad Sísmica
+              </span>
+              <span class="text-[10px] font-mono-geo text-slate-400">Gold 1</span>
+            </div>
+            <div class="h-64 relative">
+              <canvas id="chart-paises"></canvas>
+            </div>
+          </div>
+
+          <!-- Gráfico 2: Distribución por Severidad Sísmica -->
+          <div class="bg-black/40 rounded-2xl p-4 border border-white/5">
+            <div class="flex items-center justify-between mb-3">
+              <span class="font-headline font-semibold text-sm text-white flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[18px] text-rose-400">pie_chart</span>
+                Distribución por Nivel de Severidad
+              </span>
+              <span class="text-[10px] font-mono-geo text-slate-400">Gold 2</span>
+            </div>
+            <div class="h-64 relative flex items-center justify-center">
+              <canvas id="chart-severidad"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ficha Técnica de Arquitectura Gold -->
+        <div class="bg-black/30 rounded-2xl p-4 border border-white/5 grid grid-cols-3 gap-3 text-xs font-mono-geo text-center">
+          <div class="p-2.5 rounded-xl bg-white/5">
+            <span class="text-slate-400 block text-[10px] uppercase">Formato Intermedio</span>
+            <span class="text-sm font-bold text-emerald-400 mt-0.5 block">Parquet Snappy</span>
+          </div>
+          <div class="p-2.5 rounded-xl bg-white/5">
+            <span class="text-slate-400 block text-[10px] uppercase">Almacenamiento Lake</span>
+            <span class="text-sm font-bold text-amber-400 mt-0.5 block">MinIO S3 Object Storage</span>
+          </div>
+          <div class="p-2.5 rounded-xl bg-white/5">
+            <span class="text-slate-400 block text-[10px] uppercase">Gobernanza & Linaje</span>
+            <span class="text-sm font-bold text-purple-400 mt-0.5 block">Apache Atlas 21000</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- 8. AGENTE INTELIGENTE IA (GEOIA) EN LA ESQUINA INFERIOR DERECHA -->
+  <!-- ================================================================= -->
   <div id="geoia-modal" class="absolute bottom-20 right-4 z-30 w-80 sm:w-96 pointer-events-auto transition-all duration-300">
     <div class="hud-glass rounded-3xl p-4 border-emerald-500/30 shadow-2xl overflow-hidden relative">
       <div class="flex items-center justify-between pb-3 border-b border-white/10">
@@ -404,6 +621,14 @@
   let criticalShockwaveMarker = null;
   let zonasData = [];
   let sismoPrincipal = null;
+
+  // Filtros dinámicos
+  let filtroMagMin = null;
+  let filtroMagMax = null;
+
+  // Instancias de Chart.js
+  let chartPaisesInstance = null;
+  let chartSeveridadInstance = null;
 
   // 1. Catálogo de Capas Cartográficas 100% Libres (CERO API Keys Requeridas)
   const CAPAS_LIBRES = {
@@ -528,7 +753,7 @@
       const resZonas = await fetch('/api/zonas-criticas');
       if (resZonas.ok) {
         zonasData = await resZonas.json();
-        renderZonasCriticas(zonasData);
+        aplicarFiltros();
       }
 
       // B. Consultar KPIs Globales
@@ -542,28 +767,70 @@
       }
     } catch (e) {
       console.warn("Esperando conexión con PostgreSQL:", e);
-      // Fallback visual con evento prototipo si la base aún está inicializándose
-      renderZonasCriticas(obtenerDatosFallback());
+      zonasData = obtenerDatosFallback();
+      aplicarFiltros();
     }
   }
 
-  // 5. Renderizado Dinámico de Marcadores y Tarjetas
+  // 5. Filtros Interactivos de Magnitud y Búsqueda
+  function filtrarPorMagnitud(min, max, btnEl) {
+    filtroMagMin = min;
+    filtroMagMax = max;
+
+    document.querySelectorAll('.mag-chip').forEach(b => {
+      b.className = 'mag-chip px-2.5 py-1 rounded-xl bg-black/30 border border-white/5 text-slate-300 hover:text-white transition flex items-center gap-1.5';
+    });
+
+    if (btnEl) {
+      btnEl.className = 'mag-chip px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-bold transition flex items-center gap-1.5';
+    }
+
+    aplicarFiltros();
+  }
+
+  function filtrarZonas(termino) {
+    aplicarFiltros();
+  }
+
+  function aplicarFiltros() {
+    const inputVal = (document.getElementById('input-buscar')?.value || '').toLowerCase().trim();
+    let filtrados = [...zonasData];
+
+    if (filtroMagMin !== null && filtroMagMax !== null) {
+      filtrados = filtrados.filter(z => {
+        const mag = parseFloat(z.magnitud_maxima) || 0;
+        return mag >= filtroMagMin && mag <= filtroMagMax;
+      });
+    }
+
+    if (inputVal) {
+      filtrados = filtrados.filter(z => (z.zona_referencia || '').toLowerCase().includes(inputVal));
+    }
+
+    renderZonasCriticas(filtrados);
+  }
+
+  // 6. Renderizado Dinámico de Marcadores y Tarjetas
   function renderZonasCriticas(zonas) {
     markersLayer.clearLayers();
     const listEl = document.getElementById('lista-sismos');
     listEl.innerHTML = '';
 
     if (!zonas || zonas.length === 0) {
-      listEl.innerHTML = '<div class="p-2 text-center text-xs text-slate-400 font-mono-geo">Sin eventos registrados</div>';
+      listEl.innerHTML = '<div class="p-2 text-center text-xs text-slate-400 font-mono-geo">Sin eventos con este filtro</div>';
+      document.getElementById('count-zonas').innerText = '0 reportados';
       return;
     }
 
     document.getElementById('count-zonas').innerText = `${zonas.length} reportados`;
 
-    // Ordenar por magnitud descendente para destacar el sismo principal
+    // Ordenar por magnitud descendente
     zonas.sort((a, b) => (parseFloat(b.magnitud_maxima) || 0) - (parseFloat(a.magnitud_maxima) || 0));
     sismoPrincipal = zonas[0];
     actualizarTarjetaPrincipal(sismoPrincipal);
+
+    // Evaluar Alerta Temprana si el sismo principal es fuerte (Mw >= 6.0)
+    verificarAlertaTemprana(sismoPrincipal);
 
     zonas.forEach((z, idx) => {
       const lat = parseFloat(z.cuadricula_lat);
@@ -585,7 +852,7 @@
         bgBadge = 'bg-emerald-500/30 text-emerald-300 border-emerald-500/40';
       }
 
-      // Crear Marcador en el Mapa con Onda Expansiva
+      // Marcador en el Mapa
       if (esPrincipal) {
         const shockIcon = L.divIcon({
           className: 'epicenter-marker',
@@ -624,7 +891,7 @@
         `);
       }
 
-      // Elemento en la Lista de Sismos Recientes
+      // Item en Lista de Sismos
       const item = document.createElement('div');
       item.className = `p-2 rounded-xl flex items-center justify-between gap-2 cursor-pointer transition ${esPrincipal ? 'bg-rose-500/15 border border-rose-500/40 hover:bg-rose-500/25' : 'bg-black/25 border border-white/5 hover:bg-white/10'}`;
       item.onclick = () => {
@@ -650,7 +917,31 @@
     });
   }
 
-  // 6. Actualización de la Tarjeta Flotante Superior Izquierda
+  // 7. Alerta Sísmica Temprana (Screen glow + Banner táctico)
+  function verificarAlertaTemprana(sismo) {
+    if (!sismo) return;
+    const mag = parseFloat(sismo.magnitud_maxima) || 0;
+    const overlay = document.getElementById('screen-alert-overlay');
+    const banner = document.getElementById('early-warning-banner');
+
+    if (mag >= 6.0) {
+      overlay.classList.add('screen-emergency', 'opacity-100');
+      banner.classList.remove('hidden');
+      document.getElementById('early-warning-mag').innerText = `${mag.toFixed(1)} Mw`;
+      document.getElementById('early-warning-text').innerText = `Sismo de gran magnitud registrado en ${sismo.zona_referencia}. Profundidad: ${parseFloat(sismo.profundidad_promedio_km || 20).toFixed(1)} km. Monitoreo costero activo.`;
+    } else {
+      dismissEarlyWarning();
+    }
+  }
+
+  function dismissEarlyWarning() {
+    const overlay = document.getElementById('screen-alert-overlay');
+    const banner = document.getElementById('early-warning-banner');
+    overlay.classList.remove('screen-emergency', 'opacity-100');
+    banner.classList.add('hidden');
+  }
+
+  // 8. Actualización de Tarjeta Flotante Superior Izquierda
   function actualizarTarjetaPrincipal(sismo) {
     if (!sismo) return;
     const mag = parseFloat(sismo.magnitud_maxima) || 6.4;
@@ -689,7 +980,7 @@
     }
   }
 
-  // 7. Simular Streaming en Vivo hacia PostgreSQL
+  // 9. Simular Streaming en Vivo hacia PostgreSQL
   async function simularStreaming() {
     const btn = document.getElementById('btn-simular');
     btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">refresh</span> Inyectando...`;
@@ -709,18 +1000,242 @@
     }
   }
 
-  // 8. Filtrar Zonas en Tiempo Real
-  function filtrarZonas(termino) {
-    if (!termino || !termino.trim()) {
-      renderZonasCriticas(zonasData);
-      return;
+  // 10. Auditoría Lambda: Deduplicación Streaming vs Batch
+  function toggleModalLambda() {
+    const modal = document.getElementById('modal-lambda');
+    modal.classList.toggle('hidden');
+    if (!modal.classList.contains('hidden')) {
+      cargarVistaUnificada();
     }
-    const t = termino.toLowerCase();
-    const filtrados = zonasData.filter(z => (z.zona_referencia || '').toLowerCase().includes(t));
-    renderZonasCriticas(filtrados);
   }
 
-  // 9. Agente IA (GeoIA Consultor)
+  async function cargarVistaUnificada() {
+    const tbody = document.getElementById('lambda-table-body');
+    tbody.innerHTML = '<tr><td colspan="9" class="py-8 text-center text-slate-400 font-mono-geo">Cargando registros de vista_resumen_diario_pais...</td></tr>';
+    
+    try {
+      const res = await fetch('/api/vista-unificada');
+      let data = [];
+      if (res.ok) {
+        data = await res.json();
+      }
+      if (!data || data.length === 0) {
+        data = obtenerFallbackLambda();
+      }
+      renderizarTablaLambda(data);
+    } catch (e) {
+      console.warn("Fallo cargando vista unificada, usando fallback:", e);
+      renderizarTablaLambda(obtenerFallbackLambda());
+    }
+  }
+
+  function renderizarTablaLambda(filas) {
+    const tbody = document.getElementById('lambda-table-body');
+    tbody.innerHTML = '';
+
+    let totalStreaming = 0;
+    let totalBatch = 0;
+
+    filas.forEach(r => {
+      const esStreaming = (r.origen_dato === 'STREAMING');
+      if (esStreaming) totalStreaming++; else totalBatch++;
+
+      const origenBadge = esStreaming
+        ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> STREAMING</span>'
+        : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/40 text-[10px] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> BATCH</span>';
+
+      const tr = document.createElement('tr');
+      tr.className = "hover:bg-white/5 transition";
+      tr.innerHTML = `
+        <td class="py-2.5 px-3">${origenBadge}</td>
+        <td class="py-2.5 px-3 text-slate-300">${r.fecha_evento}</td>
+        <td class="py-2.5 px-3 font-semibold text-white">${r.pais_estado}</td>
+        <td class="py-2.5 px-3 text-center text-emerald-400 font-bold">${r.total_sismos}</td>
+        <td class="py-2.5 px-3 text-center font-bold ${parseFloat(r.magnitud_maxima) >= 6.0 ? 'text-rose-400' : 'text-amber-400'}">${parseFloat(r.magnitud_maxima).toFixed(2)}</td>
+        <td class="py-2.5 px-3 text-center text-slate-300">${parseFloat(r.profundidad_promedio_km).toFixed(1)} km</td>
+        <td class="py-2.5 px-3 text-center ${parseInt(r.total_alertas_tsunami) > 0 ? 'text-rose-400 font-bold' : 'text-slate-400'}">${r.total_alertas_tsunami}</td>
+        <td class="py-2.5 px-3 text-center ${parseInt(r.sismos_peligrosos_m5) > 0 ? 'text-amber-400 font-bold' : 'text-slate-400'}">${r.sismos_peligrosos_m5}</td>
+        <td class="py-2.5 px-3 text-slate-400 text-[11px]">${(r.ultima_actualizacion_utc || '').replace('T', ' ').substring(0, 19)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('lambda-count-streaming').innerText = totalStreaming;
+    document.getElementById('lambda-count-batch').innerText = totalBatch;
+    document.getElementById('lambda-count-total').innerText = filas.length;
+  }
+
+  function obtenerFallbackLambda() {
+    return [
+      { origen_dato: "STREAMING", fecha_evento: new Date().toISOString().substring(0,10), pais_estado: "Japón", total_sismos: 4, magnitud_maxima: 6.2, magnitud_promedio: 5.4, profundidad_promedio_km: 44.5, total_alertas_tsunami: 1, sismos_peligrosos_m5: 3, ultima_actualizacion_utc: new Date().toISOString() },
+      { origen_dato: "STREAMING", fecha_evento: new Date().toISOString().substring(0,10), pais_estado: "México", total_sismos: 7, magnitud_maxima: 6.4, magnitud_promedio: 4.8, profundidad_promedio_km: 18.2, total_alertas_tsunami: 0, sismos_peligrosos_m5: 2, ultima_actualizacion_utc: new Date().toISOString() },
+      { origen_dato: "BATCH", fecha_evento: "2026-10-20", pais_estado: "Chile", total_sismos: 19, magnitud_maxima: 5.8, magnitud_promedio: 4.6, profundidad_promedio_km: 33.0, total_alertas_tsunami: 0, sismos_peligrosos_m5: 5, ultima_actualizacion_utc: "2026-10-20T23:59:00" },
+      { origen_dato: "BATCH", fecha_evento: "2026-10-20", pais_estado: "Indonesia", total_sismos: 14, magnitud_maxima: 5.6, magnitud_promedio: 4.5, profundidad_promedio_km: 28.0, total_alertas_tsunami: 0, sismos_peligrosos_m5: 3, ultima_actualizacion_utc: "2026-10-20T23:59:00" },
+      { origen_dato: "BATCH", fecha_evento: "2026-10-20", pais_estado: "California", total_sismos: 28, magnitud_maxima: 4.4, magnitud_promedio: 3.2, profundidad_promedio_km: 7.5, total_alertas_tsunami: 0, sismos_peligrosos_m5: 0, ultima_actualizacion_utc: "2026-10-20T23:59:00" }
+    ];
+  }
+
+  // 11. Modal Analítica Gold (Chart.js)
+  function toggleModalAnalitica() {
+    const modal = document.getElementById('modal-analitica');
+    modal.classList.toggle('hidden');
+    if (!modal.classList.contains('hidden')) {
+      renderizarGraficosAnalitica();
+    }
+  }
+
+  async function renderizarGraficosAnalitica() {
+    let paisesLabels = [];
+    let paisesValores = [];
+    let severidadCounts = { critico: 0, moderado: 0, normal: 0 };
+
+    try {
+      const resPaises = await fetch('/api/resumen-paises');
+      if (resPaises.ok) {
+        const data = await resPaises.json();
+        paisesLabels = data.slice(0, 5).map(p => p.pais_estado);
+        paisesValores = data.slice(0, 5).map(p => parseInt(p.total_sismos) || 0);
+      }
+    } catch (e) {
+      console.warn("Fallo cargando resumen paises para grafico:", e);
+    }
+
+    if (paisesLabels.length === 0) {
+      paisesLabels = ["California", "Chile", "Indonesia", "México", "Japón"];
+      paisesValores = [28, 19, 14, 7, 4];
+    }
+
+    // Calcular distribución de severidad
+    if (zonasData && zonasData.length > 0) {
+      zonasData.forEach(z => {
+        const mag = parseFloat(z.magnitud_maxima) || 0;
+        if (mag >= 5.0) severidadCounts.critico++;
+        else if (mag >= 4.0) severidadCounts.moderado++;
+        else severidadCounts.normal++;
+      });
+    } else {
+      severidadCounts = { critico: 6, moderado: 12, normal: 24 };
+    }
+
+    // Gráfico 1: Barras Top Países
+    const ctxPaises = document.getElementById('chart-paises').getContext('2d');
+    if (chartPaisesInstance) chartPaisesInstance.destroy();
+    chartPaisesInstance = new Chart(ctxPaises, {
+      type: 'bar',
+      data: {
+        labels: paisesLabels,
+        datasets: [{
+          label: 'Total Sismos',
+          data: paisesValores,
+          backgroundColor: [
+            'rgba(6, 182, 212, 0.75)',
+            'rgba(16, 185, 129, 0.75)',
+            'rgba(245, 158, 11, 0.75)',
+            'rgba(244, 63, 94, 0.75)',
+            'rgba(168, 85, 247, 0.75)'
+          ],
+          borderColor: [
+            '#06b6d4',
+            '#10b981',
+            '#f59e0b',
+            '#f43f5e',
+            '#a855f7'
+          ],
+          borderWidth: 1.5,
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#94a3b8', font: { family: 'Space Grotesk' } },
+            grid: { display: false }
+          },
+          y: {
+            ticks: { color: '#94a3b8', font: { family: 'Space Grotesk' } },
+            grid: { color: 'rgba(255, 255, 255, 0.08)' }
+          }
+        }
+      }
+    });
+
+    // Gráfico 2: Dona de Severidad
+    const ctxSev = document.getElementById('chart-severidad').getContext('2d');
+    if (chartSeveridadInstance) chartSeveridadInstance.destroy();
+    chartSeveridadInstance = new Chart(ctxSev, {
+      type: 'doughnut',
+      data: {
+        labels: ['Crítico (>=5.0 Mw)', 'Moderado (4.0-4.9)', 'Menor (<4.0)'],
+        datasets: [{
+          data: [severidadCounts.critico, severidadCounts.moderado, severidadCounts.normal],
+          backgroundColor: [
+            'rgba(244, 63, 94, 0.85)',
+            'rgba(245, 158, 11, 0.85)',
+            'rgba(56, 189, 248, 0.85)'
+          ],
+          borderColor: '#0a1926',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#cbd5e1', font: { family: 'Space Grotesk', size: 11 } }
+          }
+        }
+      }
+    });
+  }
+
+  // 12. Exportación a CSV con UTF-8 BOM
+  function exportarCSV() {
+    const datos = (zonasData && zonasData.length > 0) ? zonasData : obtenerDatosFallback();
+    const headers = [
+      "Zona_Referencia",
+      "Cuadricula_Latitud",
+      "Cuadricula_Longitud",
+      "Magnitud_Maxima",
+      "Profundidad_Promedio_KM",
+      "Total_Sismos_Registrados",
+      "Sismos_Graves_M5",
+      "Nivel_Alerta",
+      "Fecha_Primer_Sismo",
+      "Fecha_Ultimo_Sismo"
+    ];
+
+    const filas = datos.map(z => [
+      `"${(z.zona_referencia || '').replace(/"/g, '""')}"`,
+      z.cuadricula_lat,
+      z.cuadricula_lon,
+      z.magnitud_maxima,
+      z.profundidad_promedio_km,
+      z.total_sismos_registrados || 1,
+      z.sismos_graves_m5 || 0,
+      `"${z.nivel_alerta || 'NORMAL'}"`,
+      `"${z.fecha_primer_sismo || ''}"`,
+      `"${z.fecha_ultimo_sismo || ''}"`
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...filas.map(f => f.join(","))].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `reporte_sismico_lambda_terrapulse_${new Date().toISOString().substring(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // 13. Agente IA (GeoIA Consultor)
   function toggleGeoIAModal() {
     const modal = document.getElementById('geoia-modal');
     modal.classList.toggle('hidden');
@@ -777,7 +1292,7 @@
     hist.scrollTop = hist.scrollHeight;
   }
 
-  // 10. Datos Fallback si PostgreSQL está iniciando
+  // 14. Datos Fallback si PostgreSQL está iniciando
   function obtenerDatosFallback() {
     return [
       {
@@ -787,7 +1302,8 @@
         magnitud_maxima: 6.4,
         profundidad_promedio_km: 18.2,
         nivel_alerta: "CRITICO",
-        sismos_graves_m5: 1
+        sismos_graves_m5: 1,
+        total_sismos_registrados: 7
       },
       {
         zona_referencia: "Honshu, Japón - Fosa Nipona",
@@ -796,7 +1312,8 @@
         magnitud_maxima: 5.1,
         profundidad_promedio_km: 42.0,
         nivel_alerta: "CRITICO",
-        sismos_graves_m5: 1
+        sismos_graves_m5: 1,
+        total_sismos_registrados: 4
       },
       {
         zona_referencia: "Antofagasta, Chile - Fosa de Atacama",
@@ -805,7 +1322,8 @@
         magnitud_maxima: 4.7,
         profundidad_promedio_km: 95.0,
         nivel_alerta: "MODERADO",
-        sismos_graves_m5: 0
+        sismos_graves_m5: 0,
+        total_sismos_registrados: 19
       },
       {
         zona_referencia: "Golfo de California, México - Falla Transformante",
@@ -814,7 +1332,8 @@
         magnitud_maxima: 4.2,
         profundidad_promedio_km: 10.0,
         nivel_alerta: "MODERADO",
-        sismos_graves_m5: 0
+        sismos_graves_m5: 0,
+        total_sismos_registrados: 5
       }
     ];
   }

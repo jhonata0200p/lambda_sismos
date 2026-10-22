@@ -127,6 +127,33 @@ def get_resumen_paises():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/vista-unificada")
+def get_vista_unificada():
+    """Retorna los registros de vista_resumen_diario_pais con su origen STREAMING vs BATCH"""
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT 
+                        fecha_evento,
+                        pais_estado,
+                        total_sismos,
+                        magnitud_maxima,
+                        magnitud_promedio,
+                        profundidad_promedio_km,
+                        total_alertas_tsunami,
+                        sismos_peligrosos_m5,
+                        ultima_actualizacion_utc,
+                        origen_dato
+                    FROM vista_resumen_diario_pais
+                    ORDER BY ultima_actualizacion_utc DESC
+                    LIMIT 50;
+                """)
+                rows = [serialize_row(r) for r in cur.fetchall()]
+                return rows
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/zonas-criticas")
 def get_zonas_criticas():
     """Retorna los cuadrantes geográficos y fallas críticas para el mapa Leaflet y tabla (Gold 2)"""
