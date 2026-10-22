@@ -259,3 +259,10 @@ def serve_index():
     if os.path.exists(index_file):
         return FileResponse(index_file)
     return {"message": "Backend FastAPI listo. Esperando index.html en static/"}
+
+if __name__ == "__main__":
+    import uvicorn
+    print("\n=======================================================")
+    print(">>> Iniciando Servidor Web TerraPulse GIS en http://localhost:8000")
+    print("=======================================================\n")
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
