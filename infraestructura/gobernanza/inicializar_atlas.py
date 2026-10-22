@@ -23,13 +23,13 @@ def esperar_atlas(max_reintentos=45, pausa_seg=5):
         try:
             r = requests.get(f"{BASE_URL}/types/typedefs/headers", auth=AUTH, headers=HEADERS, timeout=4)
             if r.status_code == 200:
-                logging.info("Apache Atlas está EN LÍNEA y listo para recibir metadatos.")
+                logging.info("Apache Atlas esta EN LINEA y listo para recibir metadatos.")
                 return True
         except Exception:
             pass
         logging.info(f"[{i}/{max_reintentos}] Atlas inicializando HBase/Solr... esperando {pausa_seg}s...")
         time.sleep(pausa_seg)
-    logging.error("No fue posible conectar con Apache Atlas dentro del tiempo límite.")
+    logging.error("No fue posible conectar con Apache Atlas dentro del tiempo limite.")
     return False
 
 def registrar_clasificaciones():
@@ -38,7 +38,7 @@ def registrar_clasificaciones():
     classifications = [
         {"name": "MEDALLION_BRONZE", "description": "Capa Bronze: Datos Crudos JSON (Ingesta directa de USGS)"},
         {"name": "MEDALLION_SILVER", "description": "Capa Silver: Datos Limpios Parquet Particionados"},
-        {"name": "MEDALLION_GOLD", "description": "Capa Gold: Modelos Analíticos y Agregaciones Geofísicas"},
+        {"name": "MEDALLION_GOLD", "description": "Capa Gold: Modelos Analiticos y Agregaciones Geofisicas"},
         {"name": "CRITICO_M5", "description": "Sismos Graves con Magnitud >= 5.0 (Peligro Elevado)"},
         {"name": "ALERTA_TSUNAMI", "description": "Protocolo de Alerta de Tsunami Costero Activado"}
     ]
@@ -48,22 +48,104 @@ def registrar_clasificaciones():
         if r.status_code in [200, 201]:
             logging.info("Clasificaciones de gobernanza creadas exitosamente.")
         else:
-            logging.info(f"Clasificaciones ya existentes o código {r.status_code}.")
+            logging.info(f"Clasificaciones ya existentes o codigo {r.status_code}.")
     except Exception as e:
         logging.warning(f"Aviso registrando clasificaciones: {e}")
 
-def registrar_entidades_y_linaje():
-    """Registra todo el catálogo de datasets y procesos conectando el grafo de linaje."""
-    logging.info("Construyendo árbol de linaje Medallion y Serving Layer...")
+def registrar_glosario():
+    """Registra el Glosario de Negocio de Gobernanza y sus terminos tecnicos."""
+    logging.info("Registrando Glosario de Terminos de Negocio en Atlas...")
+    glossary_payload = {
+        "name": "Glosario_Sismico_Global",
+        "shortDescription": "Glosario oficial de terminos tecnicos y gobernanza de datos sismicos",
+        "longDescription": "Estandar corporativo que define las metricas geofisicas, niveles de alerta y capas Medallion"
+    }
 
-    # 1. Definición de Datasets (Almacenamiento)
+    glossary_guid = None
+    try:
+        # 1. Verificar si ya existe el glosario
+        r_list = requests.get(f"{BASE_URL}/glossary", auth=AUTH, headers=HEADERS, timeout=10)
+        if r_list.status_code == 200:
+            for g in r_list.json():
+                if g.get("name") == "Glosario_Sismico_Global":
+                    glossary_guid = g.get("guid")
+                    logging.info(f"Glosario existente detectado (GUID: {glossary_guid}).")
+                    break
+
+        # 2. Si no existe, crearlo
+        if not glossary_guid:
+            r_create = requests.post(f"{BASE_URL}/glossary", json=glossary_payload, auth=AUTH, headers=HEADERS, timeout=10)
+            if r_create.status_code in [200, 201]:
+                glossary_guid = r_create.json().get("guid")
+                logging.info(f"Glosario de Negocio creado exitosamente (GUID: {glossary_guid}).")
+
+        # 3. Registrar los terminos del glosario
+        if glossary_guid:
+            terminos = [
+                {
+                    "name": "Sismo_Critico_M5",
+                    "shortDescription": "Sismo grave con magnitud Richter >= 5.0",
+                    "longDescription": "Clasificacion tecnica de sismos con alto potencial destructivo que detonan alertas prioritarias"
+                },
+                {
+                    "name": "Alerta_Tsunami",
+                    "shortDescription": "Aviso oceanografico por sismo costero/submarino >= 6.0",
+                    "longDescription": "Protocolo de prevencion activado por el modelo analitico ante eventos sismicos de alta energia en zonas costeras"
+                },
+                {
+                    "name": "Cuadricula_Hotspot",
+                    "shortDescription": "Celda espacial 0.1 grados (~10 km2) de agrupacion de fallas",
+                    "longDescription": "Malla analitica de agregacion de coordenadas para detectar enjambres sismicos y recurrencia geologica"
+                },
+                {
+                    "name": "Medallion_Bronze",
+                    "shortDescription": "Datos crudos inmutables en formato GeoJSON de USGS",
+                    "longDescription": "Capa base de ingesta sin transformacion depositada en tiempo real (Kafka Connect) y batch (Airflow)"
+                },
+                {
+                    "name": "Medallion_Silver",
+                    "shortDescription": "Datos limpios, desanidados y deduplicados en Parquet",
+                    "longDescription": "Capa intermedia optimizada columnarmente con particionamiento diario y tipos de datos normalizados"
+                },
+                {
+                    "name": "Medallion_Gold",
+                    "shortDescription": "Modelos analiticos agregados y matriz de riesgo sismico",
+                    "longDescription": "Capa de kpis consolidados por fecha/pais y hotspots geograficos lista para consumo de analistas"
+                },
+                {
+                    "name": "Serving_Layer_Lambda",
+                    "shortDescription": "Capa de servicio PostgreSQL con vistas unificadas",
+                    "longDescription": "Unificacion de datos historicos batch con el flujo streaming en vivo sin duplicados para la Web y BI"
+                }
+            ]
+
+            for t in terminos:
+                term_payload = {
+                    "name": t["name"],
+                    "shortDescription": t["shortDescription"],
+                    "longDescription": t["longDescription"],
+                    "anchor": {"glossaryGuid": glossary_guid}
+                }
+                r_term = requests.post(f"{BASE_URL}/glossary/term", json=term_payload, auth=AUTH, headers=HEADERS, timeout=10)
+                if r_term.status_code in [200, 201]:
+                    logging.info(f"Termino de glosario registrado: {t['name']}")
+                else:
+                    logging.info(f"Termino {t['name']} ya existente o verificado ({r_term.status_code}).")
+    except Exception as e:
+        logging.warning(f"Aviso registrando glosario de negocio: {e}")
+
+def registrar_entidades_y_linaje():
+    """Registra todo el catalogo de datasets y procesos conectando el grafo de linaje."""
+    logging.info("Construyendo arbol de linaje Medallion y Serving Layer...")
+
+    # 1. Definicion de Datasets (Almacenamiento)
     datasets = [
         {
             "typeName": "DataSet",
             "attributes": {
                 "qualifiedName": "usgs_api_raw@usgs",
                 "name": "API Externa USGS Earthquake Hazards",
-                "description": "Feed público REST JSON en vivo de la USGS (Earthquake Hazards Program)"
+                "description": "Feed publico REST JSON en vivo de la USGS (Earthquake Hazards Program)"
             },
             "classifications": [{"typeName": "MEDALLION_BRONZE"}]
         },
@@ -72,7 +154,7 @@ def registrar_entidades_y_linaje():
             "attributes": {
                 "qualifiedName": "kafka://sismos_crudos@kafka",
                 "name": "Topic Kafka: sismos_crudos",
-                "description": "Topic primario de ingesta streaming 24/7 en Apache Kafka"
+                "description": "Topic oficial primario de ingesta streaming 24/7 en Apache Kafka"
             },
             "classifications": [{"typeName": "MEDALLION_BRONZE"}]
         },
@@ -81,7 +163,7 @@ def registrar_entidades_y_linaje():
             "attributes": {
                 "qualifiedName": "s3a://bronze/streaming/@minio",
                 "name": "MinIO Bronze Streaming (/streaming)",
-                "description": "Data Lake MinIO (Laptop Sayder 10.175.132.248): JSONs crudos particionados año/mes/día"
+                "description": "Data Lake MinIO: JSONs crudos particionados ano/mes/dia persistidos en tiempo real"
             },
             "classifications": [{"typeName": "MEDALLION_BRONZE"}]
         },
@@ -116,8 +198,8 @@ def registrar_entidades_y_linaje():
             "typeName": "DataSet",
             "attributes": {
                 "qualifiedName": "s3a://gold/streaming/resumen_diario_pais/@minio",
-                "name": "MinIO Gold Streaming: Resumen Diario",
-                "description": "Agregación analítica por país/estado en vivo"
+                "name": "MinIO Gold Streaming: Resumen Diario Pais",
+                "description": "Agregacion analitica por pais/estado en tiempo real"
             },
             "classifications": [{"typeName": "MEDALLION_GOLD"}]
         },
@@ -125,8 +207,8 @@ def registrar_entidades_y_linaje():
             "typeName": "DataSet",
             "attributes": {
                 "qualifiedName": "s3a://gold/streaming/zonas_criticas_frecuentes/@minio",
-                "name": "MinIO Gold Streaming: Cuadrículas Críticas",
-                "description": "Matriz de coordenadas y cuadrículas activas en vivo"
+                "name": "MinIO Gold Streaming: Zonas Criticas",
+                "description": "Matriz de coordenadas y cuadriculas activas en tiempo real"
             },
             "classifications": [{"typeName": "MEDALLION_GOLD"}]
         },
@@ -134,8 +216,8 @@ def registrar_entidades_y_linaje():
             "typeName": "DataSet",
             "attributes": {
                 "qualifiedName": "s3a://gold/batch/resumen_diario_pais/@minio",
-                "name": "MinIO Gold Batch: Resumen Diario País",
-                "description": "Parquet analítico Gold consolidado diario"
+                "name": "MinIO Gold Batch: Resumen Diario Pais",
+                "description": "Parquet analitico Gold consolidado diario de resumen sismico"
             },
             "classifications": [{"typeName": "MEDALLION_GOLD"}]
         },
@@ -143,8 +225,8 @@ def registrar_entidades_y_linaje():
             "typeName": "DataSet",
             "attributes": {
                 "qualifiedName": "s3a://gold/batch/zonas_criticas_frecuentes/@minio",
-                "name": "MinIO Gold Batch: Zonas Críticas",
-                "description": "Historial de fallas críticas acumuladas"
+                "name": "MinIO Gold Batch: Zonas Criticas",
+                "description": "Historial de fallas criticas acumuladas en el carril batch"
             },
             "classifications": [{"typeName": "MEDALLION_GOLD"}]
         },
@@ -153,7 +235,7 @@ def registrar_entidades_y_linaje():
             "attributes": {
                 "qualifiedName": "postgres://sismos_db/gold_resumen_streaming@postgres",
                 "name": "PostgreSQL: gold_resumen_streaming",
-                "description": "Tabla física en PostgreSQL Serving Layer (Laptop Sayder 10.175.132.248:5432)"
+                "description": "Tabla fisica en PostgreSQL Serving Layer receptora de agregaciones en streaming"
             },
             "classifications": [{"typeName": "MEDALLION_GOLD"}]
         },
@@ -162,7 +244,7 @@ def registrar_entidades_y_linaje():
             "attributes": {
                 "qualifiedName": "postgres://sismos_db/gold_resumen_batch@postgres",
                 "name": "PostgreSQL: gold_resumen_batch",
-                "description": "Tabla física en PostgreSQL con datos históricos del lote diario"
+                "description": "Tabla fisica en PostgreSQL receptora de datos historicos consolidados diarios"
             },
             "classifications": [{"typeName": "MEDALLION_GOLD"}]
         },
@@ -171,7 +253,7 @@ def registrar_entidades_y_linaje():
             "attributes": {
                 "qualifiedName": "postgres://sismos_db/gold_zonas_streaming@postgres",
                 "name": "PostgreSQL: gold_zonas_streaming",
-                "description": "Tabla física con cuadrículas críticas actualizadas en streaming"
+                "description": "Tabla fisica con cuadriculas criticas actualizadas en streaming"
             },
             "classifications": [{"typeName": "MEDALLION_GOLD"}, {"typeName": "CRITICO_M5"}]
         },
@@ -180,7 +262,7 @@ def registrar_entidades_y_linaje():
             "attributes": {
                 "qualifiedName": "postgres://sismos_db/gold_zonas_batch@postgres",
                 "name": "PostgreSQL: gold_zonas_batch",
-                "description": "Tabla física con historial consolidado de zonas sísmicas"
+                "description": "Tabla fisica con historial consolidado de zonas sismicas batch"
             },
             "classifications": [{"typeName": "MEDALLION_GOLD"}]
         },
@@ -198,7 +280,7 @@ def registrar_entidades_y_linaje():
             "attributes": {
                 "qualifiedName": "postgres://sismos_db/vista_zonas_criticas_frecuentes@postgres",
                 "name": "PostgreSQL Vista SQL: vista_zonas_criticas_frecuentes",
-                "description": "Vista unificada de fallas geológicas para monitoreo de riesgo"
+                "description": "Vista unificada de fallas geologicas para evaluacion de riesgo geoespacial"
             },
             "classifications": [{"typeName": "MEDALLION_GOLD"}, {"typeName": "ALERTA_TSUNAMI"}]
         },
@@ -206,14 +288,14 @@ def registrar_entidades_y_linaje():
             "typeName": "DataSet",
             "attributes": {
                 "qualifiedName": "dashboard_web_serving@fastapi",
-                "name": "Centro de Mando Sísmico Web (FastAPI)",
-                "description": "Consola operativa de visualización táctica y Asistente GeoCopilot Gemini AI"
+                "name": "Web Serving Layer: GeoCopilot Dashboard (FastAPI)",
+                "description": "Capa de presentacion con FastAPI, sismografo interactivo y Asistente GeoCopilot AI"
             },
             "classifications": [{"typeName": "MEDALLION_GOLD"}]
         }
     ]
 
-    # 2. Definición de Procesos (Flechas de Linaje)
+    # 2. Definicion de Procesos (Flechas de Linaje)
     def ref(qn):
         return {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": qn}}
 
@@ -223,7 +305,7 @@ def registrar_entidades_y_linaje():
             "attributes": {
                 "qualifiedName": "kafka_connect_http_source@kafka",
                 "name": "Kafka Connect: HTTP Source Ingestion",
-                "description": "Consulta periódica en tiempo real hacia la API de USGS",
+                "description": "Consulta periodica cada 60s hacia la API publica de USGS (Responsable: Josue)",
                 "inputs": [ref("usgs_api_raw@usgs")],
                 "outputs": [ref("kafka://sismos_crudos@kafka")]
             }
@@ -233,7 +315,7 @@ def registrar_entidades_y_linaje():
             "attributes": {
                 "qualifiedName": "kafka_connect_s3_sink@kafka",
                 "name": "Kafka Connect: MinIO S3 Sink Bronze",
-                "description": "Persistencia directa 24/7 de eventos crudos en MinIO Bronze Streaming",
+                "description": "Persistencia directa 24/7 de eventos crudos en MinIO Bronze Streaming (Josue y Sayder)",
                 "inputs": [ref("kafka://sismos_crudos@kafka")],
                 "outputs": [ref("s3a://bronze/streaming/@minio")]
             }
@@ -242,8 +324,8 @@ def registrar_entidades_y_linaje():
             "typeName": "Process",
             "attributes": {
                 "qualifiedName": "airflow_batch_extractor@airflow",
-                "name": "Apache Airflow: Extracción Batch Diaria (07:00 AM)",
-                "description": "DAG programado de extracción consolidada hacia Bronze Batch",
+                "name": "Apache Airflow: Extraccion Batch Diaria (07:00 AM)",
+                "description": "DAG programado de extraccion consolidada de 24h hacia Bronze Batch (Responsable: Jesus)",
                 "inputs": [ref("usgs_api_raw@usgs")],
                 "outputs": [ref("s3a://bronze/batch/@minio")]
             }
@@ -252,8 +334,8 @@ def registrar_entidades_y_linaje():
             "typeName": "Process",
             "attributes": {
                 "qualifiedName": "spark_streaming_pipeline@spark",
-                "name": "Apache Spark Streaming Job",
-                "description": "Micro-batches de limpieza y agregación en tiempo real (Laptop Jesús)",
+                "name": "Apache Spark Streaming Pipeline",
+                "description": "Micro-batches de limpieza a Silver Parquet y agregacion analitica a Gold y Postgres (Responsable: Josue)",
                 "inputs": [ref("kafka://sismos_crudos@kafka")],
                 "outputs": [
                     ref("s3a://silver/streaming/@minio"),
@@ -269,7 +351,7 @@ def registrar_entidades_y_linaje():
             "attributes": {
                 "qualifiedName": "spark_batch_etl@spark",
                 "name": "Apache Spark Batch ETL Job",
-                "description": "ETL pesado de normalización y modelado analítico batch",
+                "description": "ETL de normalizacion pesada, limpieza Parquet y modelado analitico diario (Responsable: Kevin)",
                 "inputs": [ref("s3a://bronze/batch/@minio")],
                 "outputs": [
                     ref("s3a://silver/batch/@minio"),
@@ -284,8 +366,8 @@ def registrar_entidades_y_linaje():
             "typeName": "Process",
             "attributes": {
                 "qualifiedName": "postgres_view_consolidation@postgres",
-                "name": "PostgreSQL: Consolidación SQL Lambda",
-                "description": "Vistas SQL que unifican el carril Streaming y Batch sin duplicados",
+                "name": "PostgreSQL: Consolidacion SQL Lambda",
+                "description": "Vistas SQL que unifican el carril Streaming y Batch sin duplicados (Sayder y Jhonatan)",
                 "inputs": [
                     ref("postgres://sismos_db/gold_resumen_streaming@postgres"),
                     ref("postgres://sismos_db/gold_resumen_batch@postgres"),
@@ -303,7 +385,7 @@ def registrar_entidades_y_linaje():
             "attributes": {
                 "qualifiedName": "serving_web_layer@fastapi",
                 "name": "Consumo Serving Layer: Web Dashboard FastAPI",
-                "description": "Exposición de KPIs, sismógrafo y RAG GeoCopilot hacia la interfaz",
+                "description": "Exposicion de KPIs, sismografo y Asistente GeoCopilot hacia la interfaz web (Responsable: Jhonatan)",
                 "inputs": [
                     ref("postgres://sismos_db/vista_resumen_diario_pais@postgres"),
                     ref("postgres://sismos_db/vista_zonas_criticas_frecuentes@postgres")
@@ -325,7 +407,7 @@ def registrar_entidades_y_linaje():
         # 2. Registrar los Procesos conectando el grafo de linaje
         r2 = requests.post(f"{BASE_URL}/entity/bulk", json={"entities": processes}, auth=AUTH, headers=HEADERS, timeout=20)
         if r2.status_code in [200, 201]:
-            logging.info("¡Todas las entidades y relaciones de linaje fueron cargadas exitosamente en Apache Atlas!")
+            logging.info("Todas las entidades y relaciones de linaje fueron cargadas exitosamente en Apache Atlas.")
             logging.info("Puedes verificar el linaje en: http://localhost:21000")
             return True
         else:
@@ -336,10 +418,11 @@ def registrar_entidades_y_linaje():
         return False
 
 if __name__ == "__main__":
-    logging.info("=== INICIALIZADOR DEL ÁRBOL DE GOBERNANZA APACHE ATLAS ===")
+    logging.info("=== INICIALIZADOR DEL ARBOL DE GOBERNANZA APACHE ATLAS ===")
     if esperar_atlas():
         registrar_clasificaciones()
+        registrar_glosario()
         registrar_entidades_y_linaje()
-        logging.info("Proceso completado. Linaje listo para sustentación.")
+        logging.info("Proceso completado. Linaje y Glosario listos para sustentacion.")
     else:
         sys.exit(1)
