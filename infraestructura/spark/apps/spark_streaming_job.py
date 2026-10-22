@@ -111,8 +111,7 @@ def procesar_microbatch(batch_df, batch_id):
         print(f">>> [STREAMING] Micro-batch {batch_id}: Vacio (sin sismos nuevos en Kafka). Esperando...")
         return
 
-    print(f"
-=======================================================")
+    print("=======================================================")
     print(f">>> [STREAMING] Micro-batch {batch_id} RECIBIDO: {conteo} eventos sismicos")
     print(f"=======================================================")
 
