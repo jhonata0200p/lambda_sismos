@@ -460,7 +460,7 @@ def main():
                 {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://bronze/batch/@minio"}}
             ],
             outputs=[
-                {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://silver/batch/fact_sismos/@minio"}},
+                {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://silver/batch/@minio"}},
                 {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://gold/batch/resumen_diario_pais/@minio"}},
                 {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "s3a://gold/batch/zonas_criticas_frecuentes/@minio"}},
                 {"typeName": "DataSet", "uniqueAttributes": {"qualifiedName": "postgres://sismos_db/gold_resumen_batch@postgres"}},

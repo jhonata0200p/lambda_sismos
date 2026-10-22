@@ -70,18 +70,9 @@ def registrar_entidades_y_linaje():
         {
             "typeName": "DataSet",
             "attributes": {
-                "qualifiedName": "kafka://streaming@kafka",
-                "name": "Topic Kafka: streaming",
-                "description": "Topic primario de ingesta streaming 24/7 en Apache Kafka"
-            },
-            "classifications": [{"typeName": "MEDALLION_BRONZE"}]
-        },
-        {
-            "typeName": "DataSet",
-            "attributes": {
                 "qualifiedName": "kafka://sismos_crudos@kafka",
                 "name": "Topic Kafka: sismos_crudos",
-                "description": "Topic sincronizado en tiempo real para consumo del cluster Spark Streaming"
+                "description": "Topic primario de ingesta streaming 24/7 en Apache Kafka"
             },
             "classifications": [{"typeName": "MEDALLION_BRONZE"}]
         },
@@ -106,7 +97,7 @@ def registrar_entidades_y_linaje():
         {
             "typeName": "DataSet",
             "attributes": {
-                "qualifiedName": "s3a://silver/streaming/fact_sismos/@minio",
+                "qualifiedName": "s3a://silver/streaming/@minio",
                 "name": "MinIO Silver Streaming (/silver/streaming)",
                 "description": "Parquet enriquecido y tipado: sismos deduplicados y limpios en tiempo real"
             },
@@ -115,7 +106,7 @@ def registrar_entidades_y_linaje():
         {
             "typeName": "DataSet",
             "attributes": {
-                "qualifiedName": "s3a://silver/batch/fact_sismos/@minio",
+                "qualifiedName": "s3a://silver/batch/@minio",
                 "name": "MinIO Silver Batch (/silver/batch)",
                 "description": "Parquet limpio diario procesado por Spark Batch ETL"
             },
@@ -234,7 +225,7 @@ def registrar_entidades_y_linaje():
                 "name": "Kafka Connect: HTTP Source Ingestion",
                 "description": "Consulta periódica en tiempo real hacia la API de USGS",
                 "inputs": [ref("usgs_api_raw@usgs")],
-                "outputs": [ref("kafka://streaming@kafka"), ref("kafka://sismos_crudos@kafka")]
+                "outputs": [ref("kafka://sismos_crudos@kafka")]
             }
         },
         {
@@ -243,7 +234,7 @@ def registrar_entidades_y_linaje():
                 "qualifiedName": "kafka_connect_s3_sink@kafka",
                 "name": "Kafka Connect: MinIO S3 Sink Bronze",
                 "description": "Persistencia directa 24/7 de eventos crudos en MinIO Bronze Streaming",
-                "inputs": [ref("kafka://streaming@kafka")],
+                "inputs": [ref("kafka://sismos_crudos@kafka")],
                 "outputs": [ref("s3a://bronze/streaming/@minio")]
             }
         },
@@ -265,7 +256,7 @@ def registrar_entidades_y_linaje():
                 "description": "Micro-batches de limpieza y agregación en tiempo real (Laptop Jesús)",
                 "inputs": [ref("kafka://sismos_crudos@kafka")],
                 "outputs": [
-                    ref("s3a://silver/streaming/fact_sismos/@minio"),
+                    ref("s3a://silver/streaming/@minio"),
                     ref("s3a://gold/streaming/resumen_diario_pais/@minio"),
                     ref("s3a://gold/streaming/zonas_criticas_frecuentes/@minio"),
                     ref("postgres://sismos_db/gold_resumen_streaming@postgres"),
@@ -281,7 +272,7 @@ def registrar_entidades_y_linaje():
                 "description": "ETL pesado de normalización y modelado analítico batch",
                 "inputs": [ref("s3a://bronze/batch/@minio")],
                 "outputs": [
-                    ref("s3a://silver/batch/fact_sismos/@minio"),
+                    ref("s3a://silver/batch/@minio"),
                     ref("s3a://gold/batch/resumen_diario_pais/@minio"),
                     ref("s3a://gold/batch/zonas_criticas_frecuentes/@minio"),
                     ref("postgres://sismos_db/gold_resumen_batch@postgres"),
