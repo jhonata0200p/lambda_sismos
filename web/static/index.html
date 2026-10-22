@@ -146,6 +146,9 @@
       <button id="btn-toggle-plates" onclick="toggleTectonicPlates()" class="px-3 py-1.5 rounded-xl bg-emerald-600/90 text-white font-mono-geo text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
         <span class="material-symbols-outlined text-[16px]">public</span> Fallas Tectónicas
       </button>
+      <button id="btn-toggle-tiles" onclick="cycleBasemap()" class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 font-mono-geo text-xs font-medium transition flex items-center gap-1.5" title="Alternar mapa base libre sin API key">
+        <span class="material-symbols-outlined text-[16px] text-sky-400">map</span> <span id="basemap-label">Gris Táctico</span>
+      </button>
       <button id="btn-simular" onclick="simularStreaming()" class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 font-mono-geo text-xs font-medium transition flex items-center gap-1.5">
         <span class="material-symbols-outlined text-[16px] text-amber-400">bolt</span> Simular Streaming
       </button>
@@ -402,7 +405,33 @@
   let zonasData = [];
   let sismoPrincipal = null;
 
-  // 1. Inicialización de Cartografía Leaflet con Estilo Táctico Oscuro
+  // 1. Catálogo de Capas Cartográficas 100% Libres (CERO API Keys Requeridas)
+  const CAPAS_LIBRES = {
+    dark: {
+      nombre: "Gris Táctico",
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+      maxZoom: 16
+    },
+    ocean: {
+      nombre: "Océanos GIS",
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}",
+      maxZoom: 13
+    },
+    satellite: {
+      nombre: "Satelital",
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      maxZoom: 18
+    },
+    osm: {
+      nombre: "OpenStreetMap",
+      url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      maxZoom: 18
+    }
+  };
+
+  let activeBasemapKey = "dark";
+  let currentTileLayer = null;
+
   function initMap() {
     map = L.map('map', {
       center: [16.5, -97.0],
@@ -411,16 +440,34 @@
       attributionControl: false
     });
 
-    // Capa Base Cartográfica: CartoDB Dark Matter (Estilo GIS Profesional)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 18,
-      subdomains: 'abcd'
+    // Capa Base por defecto: ESRI Dark Canvas (100% Libre, Cero API Keys)
+    currentTileLayer = L.tileLayer(CAPAS_LIBRES.dark.url, {
+      maxZoom: CAPAS_LIBRES.dark.maxZoom
     }).addTo(map);
 
     markersLayer.addTo(map);
 
     // Cargar Fallas Tectónicas Oficiales
     cargarFallasTectonicas();
+  }
+
+  function cycleBasemap() {
+    const keys = ["dark", "ocean", "satellite", "osm"];
+    let nextIdx = (keys.indexOf(activeBasemapKey) + 1) % keys.length;
+    activeBasemapKey = keys[nextIdx];
+    const capa = CAPAS_LIBRES[activeBasemapKey];
+
+    if (currentTileLayer) {
+      map.removeLayer(currentTileLayer);
+    }
+    currentTileLayer = L.tileLayer(capa.url, { maxZoom: capa.maxZoom }).addTo(map);
+    if (tectonicLayer && map.hasLayer(tectonicLayer)) {
+      tectonicLayer.bringToFront();
+    }
+    markersLayer.bringToFront();
+
+    const label = document.getElementById('basemap-label');
+    if (label) label.innerText = capa.nombre;
   }
 
   // 2. Carga de Placas y Fallas Tectónicas GeoJSON con Código de Color
