@@ -287,18 +287,9 @@ def serve_index():
         return FileResponse(index_file)
     return {"message": "Backend FastAPI listo. Esperando index.html en static/"}
 
-@app.get("/presentacion")
-def serve_presentacion():
-    """Sirve las diapositivas interactivas de sustentación para el equipo"""
-    pres_file = os.path.join(STATIC_DIR, "presentacion.html")
-    if os.path.exists(pres_file):
-        return FileResponse(pres_file)
-    return {"message": "Diapositivas no encontradas en static/presentacion.html"}
-
 if __name__ == "__main__":
     import uvicorn
     print("\n=======================================================")
     print(">>> Iniciando Servidor Web TerraPulse GIS en http://localhost:8000")
-    print(">>> Diapositivas de Sustentación en http://localhost:8000/presentacion")
     print("=======================================================\n")
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
