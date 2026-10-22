@@ -82,6 +82,7 @@ df_raw = spark.readStream \
     .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
     .option("subscribe", KAFKA_TOPIC) \
     .option("startingOffsets", "earliest") \
+    .option("failOnDataLoss", "false") \
     .load()
 
 # ---------------------------------------------------------
@@ -108,27 +109,18 @@ df_silver = df_parsed.select(
 def procesar_microbatch(batch_df, batch_id):
     conteo = batch_df.count()
     if conteo == 0:
-        print(f">>> [STREAMING] Micro-batch {batch_id}: Vacio (sin sismos nuevos en Kafka). Esperando...")
+        print(f">>> [STREAMING] Micro-batch {batch_id}: Vacio (sin sismos nuevos en Kafka). Esperando...", flush=True)
         return
 
-    print("=======================================================")
-    print(f">>> [STREAMING] Micro-batch {batch_id} RECIBIDO: {conteo} eventos sismicos")
-    print(f"=======================================================")
+    print("=======================================================", flush=True)
+    print(f">>> [STREAMING] Micro-batch {batch_id} RECIBIDO: {conteo} eventos sismicos", flush=True)
+    print("=======================================================", flush=True)
 
     # DEDUPLICACIÓN: Evita procesar sismos duplicados dentro del micro-lote
     batch_df_unique = batch_df.dropDuplicates(["id_sismo"])
     batch_df_unique.persist()
 
-    # --- A. ESCRITURA EN MINIO REMOTO (SILVER) ---
-    try:
-        batch_df_unique.write \
-            .mode("append") \
-            .partitionBy("fecha_evento") \
-            .parquet("s3a://silver/streaming/")
-    except Exception as e:
-        print(f"Error escribiendo Silver en MinIO: {e}")
-
-    # --- B. AGREGACIÓN 1: Resumen Diario (Gold) ---
+    # --- AGREGACIÓN 1: Resumen Diario (Gold) ---
     df_resumen = batch_df_unique.withColumn(
         "pais_estado",
         when(
@@ -144,15 +136,24 @@ def procesar_microbatch(batch_df, batch_id):
         spark_sum(when(col("magnitud") >= 5.0, 1).otherwise(0)).alias("sismos_peligrosos_m5")
     )
 
-    try:
-        df_resumen.write \
-            .mode("append") \
-            .partitionBy("fecha_evento") \
-            .parquet("s3a://gold/streaming/resumen_diario_pais/")
-    except Exception as e:
-        print(f"Error escribiendo Gold Resumen en MinIO: {e}")
+    # --- AGREGACIÓN 2: Zonas Críticas (Gold) ---
+    df_zonas = batch_df_unique.withColumn("cuadricula_lat", spark_round(col("latitud"), 1)) \
+                              .withColumn("cuadricula_lon", spark_round(col("longitud"), 1)) \
+                              .groupBy("cuadricula_lat", "cuadricula_lon").agg(
+                                  spark_max("lugar").alias("zona_referencia"),
+                                  count("id_sismo").alias("total_sismos_registrados"),
+                                  spark_sum(when(col("magnitud") >= 5.0, 1).otherwise(0)).alias("sismos_graves_m5"),
+                                  spark_max("magnitud").alias("magnitud_maxima"),
+                                  avg("profundidad_km").alias("profundidad_promedio_km"),
+                                  spark_min("timestamp_evento").alias("fecha_primer_sismo"),
+                                  spark_max("timestamp_evento").alias("fecha_ultimo_sismo"),
+                                  when(spark_max("magnitud") >= 6.0, "ALTA")
+                                  .when(spark_max("magnitud") >= 4.5, "MEDIA")
+                                  .otherwise("BAJA").alias("nivel_alerta")
+                              )
 
-    # --- C. ESCRITURA EN POSTGRESQL REMOTO (gold_resumen_streaming) ---
+    # --- PASO 1: ESCRITURA INMEDIATA EN POSTGRESQL (Serving Layer) ---
+    # 1.1 gold_resumen_streaming
     rows_resumen = df_resumen.collect()
     if rows_resumen:
         conn = None
@@ -203,39 +204,16 @@ def procesar_microbatch(batch_df, batch_id):
             ]
             execute_batch(cur, query_resumen, data_resumen)
             conn.commit()
-            print(f">>> [STREAMING] {len(data_resumen)} filas insertadas/actualizadas en gold_resumen_streaming exitosamente.")
+            print(f">>> [STREAMING] {len(data_resumen)} filas insertadas/actualizadas en gold_resumen_streaming exitosamente.", flush=True)
         except Exception as e:
-            print(f"Error escribiendo gold_resumen_streaming: {e}")
+            print(f"Error escribiendo gold_resumen_streaming: {e}", flush=True)
         finally:
             if cur:
                 cur.close()
             if conn:
                 conn.close()
 
-    # --- D. AGREGACIÓN 2: Zonas Críticas (Gold) ---
-    df_zonas = batch_df_unique.withColumn("cuadricula_lat", spark_round(col("latitud"), 1)) \
-                              .withColumn("cuadricula_lon", spark_round(col("longitud"), 1)) \
-                              .groupBy("cuadricula_lat", "cuadricula_lon").agg(
-                                  spark_max("lugar").alias("zona_referencia"),
-                                  count("id_sismo").alias("total_sismos_registrados"),
-                                  spark_sum(when(col("magnitud") >= 5.0, 1).otherwise(0)).alias("sismos_graves_m5"),
-                                  spark_max("magnitud").alias("magnitud_maxima"),
-                                  avg("profundidad_km").alias("profundidad_promedio_km"),
-                                  spark_min("timestamp_evento").alias("fecha_primer_sismo"),
-                                  spark_max("timestamp_evento").alias("fecha_ultimo_sismo"),
-                                  when(spark_max("magnitud") >= 6.0, "ALTA")
-                                  .when(spark_max("magnitud") >= 4.5, "MEDIA")
-                                  .otherwise("BAJA").alias("nivel_alerta")
-                              )
-
-    try:
-        df_zonas.write \
-            .mode("append") \
-            .parquet("s3a://gold/streaming/zonas_criticas_frecuentes/")
-    except Exception as e:
-        print(f"Error escribiendo Gold Zonas en MinIO: {e}")
-
-    # --- E. ESCRITURA EN POSTGRESQL REMOTO (gold_zonas_streaming) ---
+    # 1.2 gold_zonas_streaming
     rows_zonas = df_zonas.collect()
     if rows_zonas:
         conn = None
@@ -290,14 +268,41 @@ def procesar_microbatch(batch_df, batch_id):
             ]
             execute_batch(cur, query_zonas, data_zonas)
             conn.commit()
-            print(f">>> [STREAMING] {len(data_zonas)} filas insertadas/actualizadas en gold_zonas_streaming exitosamente.")
+            print(f">>> [STREAMING] {len(data_zonas)} filas insertadas/actualizadas en gold_zonas_streaming exitosamente.", flush=True)
         except Exception as e:
-            print(f"Error escribiendo gold_zonas_streaming: {e}")
+            print(f"Error escribiendo gold_zonas_streaming: {e}", flush=True)
         finally:
             if cur:
                 cur.close()
             if conn:
                 conn.close()
+
+    # --- PASO 2: ESCRITURA EN MINIO REMOTO (Silver y Gold Parquet) ---
+    try:
+        batch_df_unique.write \
+            .mode("append") \
+            .partitionBy("fecha_evento") \
+            .parquet("s3a://silver/streaming/")
+        print(">>> [STREAMING] Parquet Silver guardado en MinIO s3a://silver/streaming/", flush=True)
+    except Exception as e:
+        print(f"Aviso escribiendo Silver en MinIO: {e}", flush=True)
+
+    try:
+        df_resumen.write \
+            .mode("append") \
+            .partitionBy("fecha_evento") \
+            .parquet("s3a://gold/streaming/resumen_diario_pais/")
+        print(">>> [STREAMING] Parquet Gold Resumen guardado en MinIO", flush=True)
+    except Exception as e:
+        print(f"Aviso escribiendo Gold Resumen en MinIO: {e}", flush=True)
+
+    try:
+        df_zonas.write \
+            .mode("append") \
+            .parquet("s3a://gold/streaming/zonas_criticas_frecuentes/")
+        print(">>> [STREAMING] Parquet Gold Zonas guardado en MinIO", flush=True)
+    except Exception as e:
+        print(f"Aviso escribiendo Gold Zonas en MinIO: {e}", flush=True)
 
     batch_df_unique.unpersist()
 
@@ -306,7 +311,7 @@ def procesar_microbatch(batch_df, batch_id):
 # ---------------------------------------------------------
 query = df_silver.writeStream \
     .foreachBatch(procesar_microbatch) \
-    .option("checkpointLocation", "/tmp/spark_checkpoints/streaming_pipeline") \
+    .option("checkpointLocation", "/tmp/spark_checkpoints/streaming_pipeline_v3") \
     .start()
 
 # Notificar Linaje Streaming inicial a Apache Atlas
