@@ -1,0 +1,226 @@
+version: "3.9"
+
+volumes:
+  om_es_data:
+    name: openmetadata_es_data
+  om_pg_data:
+    name: openmetadata_pg_data
+  ingestion-volume-dag-airflow:
+    name: openmetadata_ingestion_dag_airflow
+  ingestion-volume-dags:
+    name: openmetadata_ingestion_dags
+  ingestion-volume-tmp:
+    name: openmetadata_ingestion_tmp
+
+services:
+  # ==============================================================================
+  # BASE DE DATOS METADATA: PostgreSQL 2.0.6 (Collate Pre-configurado)
+  # ==============================================================================
+  postgresql:
+    container_name: openmetadata_postgresql
+    image: docker.getcollate.io/openmetadata/postgresql:2.0.6
+    restart: unless-stopped
+    command: "--work_mem=10MB"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "${OM_PG_PORT:-5433}:5432"
+    volumes:
+      - om_pg_data:/var/lib/postgresql/data
+    networks:
+      - om_net
+      - red_bigdata
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: "1.0"
+    healthcheck:
+      test: ["CMD-SHELL", "psql -U postgres -d openmetadata_db -tAc 'select 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ==============================================================================
+  # MOTOR DE BUSQUEDA E INDEXACION: Elasticsearch 9.3.0
+  # ==============================================================================
+  elasticsearch:
+    container_name: openmetadata_elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.3.0
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=${ES_JAVA_OPTS:--Xms512m -Xmx768m}
+      - xpack.security.enabled=false
+    networks:
+      - om_net
+    deploy:
+      resources:
+        limits:
+          memory: 1200M
+          cpus: "1.5"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -qE 'green|yellow' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+    volumes:
+      - om_es_data:/usr/share/elasticsearch/data
+
+  # ==============================================================================
+  # MIGRACION INICIAL DEL ESQUEMA DE METADATOS (Se ejecuta y finaliza con exito)
+  # ==============================================================================
+  execute-migrate-all:
+    container_name: openmetadata_execute_migrate_all
+    image: docker.getcollate.io/openmetadata/server:2.0.6
+    command: "./bootstrap/openmetadata-ops.sh migrate"
+    environment:
+      OPENMETADATA_CLUSTER_NAME: openmetadata
+      SERVER_PORT: ${OM_PORT:-8585}
+      SERVER_ADMIN_PORT: ${OM_ADMIN_PORT:-8586}
+      LOG_LEVEL: INFO
+      MIGRATION_LIMIT_PARAM: 1200
+      DB_DRIVER_CLASS: org.postgresql.Driver
+      DB_SCHEME: postgresql
+      DB_PARAMS: allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USER: openmetadata_user
+      DB_USER_PASSWORD: openmetadata_password
+      DB_HOST: postgresql
+      DB_PORT: 5432
+      OM_DATABASE: openmetadata_db
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_SCHEME: http
+      SEARCH_TYPE: elasticsearch
+      OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xms512m -Xmx768m}
+      PIPELINE_SERVICE_CLIENT_ENABLED: "false"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+    networks:
+      - om_net
+    deploy:
+      resources:
+        limits:
+          memory: 1200M
+          cpus: "1.5"
+
+  # ==============================================================================
+  # SERVIDOR CENTRAL Y UI: OpenMetadata Server 2.0.6
+  # ==============================================================================
+  openmetadata-server:
+    container_name: openmetadata_server
+    restart: unless-stopped
+    image: docker.getcollate.io/openmetadata/server:2.0.6
+    environment:
+      OPENMETADATA_CLUSTER_NAME: openmetadata
+      SERVER_PORT: ${OM_PORT:-8585}
+      SERVER_ADMIN_PORT: ${OM_ADMIN_PORT:-8586}
+      LOG_LEVEL: INFO
+      AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
+      AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+      AUTHORIZER_ADMIN_PRINCIPALS: "[admin]"
+      AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN: '["all"]'
+      AUTHORIZER_INGESTION_PRINCIPALS: "[ingestion-bot]"
+      AUTHORIZER_PRINCIPAL_DOMAIN: "open-metadata.org"
+      AUTHENTICATION_PROVIDER: basic
+      AUTHENTICATION_RESPONSE_TYPE: id_token
+      AUTHENTICATION_PUBLIC_KEYS: "[http://localhost:8585/api/v1/system/config/jwks]"
+      AUTHENTICATION_ENABLE_SELF_SIGNUP: "true"
+      AUTHENTICATION_CLIENT_TYPE: public
+      RSA_PUBLIC_KEY_FILE_PATH: "./conf/public_key.der"
+      RSA_PRIVATE_KEY_FILE_PATH: "./conf/private_key.der"
+      JWT_ISSUER: "open-metadata.org"
+      JWT_KEY_ID: "Gb389a-9f76-gdjs-a92j-0242bk94356"
+      DB_DRIVER_CLASS: org.postgresql.Driver
+      DB_SCHEME: postgresql
+      DB_PARAMS: allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USER: openmetadata_user
+      DB_USER_PASSWORD: openmetadata_password
+      DB_HOST: postgresql
+      DB_PORT: 5432
+      OM_DATABASE: openmetadata_db
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_SCHEME: http
+      SEARCH_TYPE: elasticsearch
+      PIPELINE_SERVICE_CLIENT_ENABLED: "false"
+      OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xms512m -Xmx768m}
+      MASK_PASSWORDS_API: "false"
+      SERVER_HOST_API_URL: http://openmetadata-server:8585/api
+    ports:
+      - "${OM_PORT:-8585}:8585"
+      - "${OM_ADMIN_PORT:-8586}:8586"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+      execute-migrate-all:
+        condition: service_completed_successfully
+    networks:
+      - om_net
+      - red_bigdata
+    deploy:
+      resources:
+        limits:
+          memory: 1200M
+          cpus: "1.5"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8586/healthcheck || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+  # ==============================================================================
+  # MOTOR DE INGESTA AUTOMATICA (Airflow Ingestion) - Perfil Opcional 'ingestion'
+  # ==============================================================================
+  ingestion:
+    profiles:
+      - ingestion
+    container_name: openmetadata_ingestion
+    image: docker.getcollate.io/openmetadata/ingestion:2.0.6
+    restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_started
+      postgresql:
+        condition: service_healthy
+      openmetadata-server:
+        condition: service_started
+    environment:
+      AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: "/opt/airflow/dag_generated_configs"
+      DB_HOST: postgresql
+      DB_PORT: 5432
+      AIRFLOW_DB: airflow_db
+      DB_USER: airflow_user
+      DB_SCHEME: postgresql+psycopg2
+      DB_PASSWORD: airflow_pass
+    entrypoint: /bin/bash
+    command:
+      - "/opt/airflow/ingestion_dependency.sh"
+    ports:
+      - "${OM_INGESTION_PORT:-8587}:8080"
+    networks:
+      - om_net
+      - red_bigdata
+    deploy:
+      resources:
+        limits:
+          memory: 800M
+          cpus: "1.0"
+    volumes:
+      - ingestion-volume-dag-airflow:/opt/airflow/dag_generated_configs
+      - ingestion-volume-dags:/opt/airflow/dags
+      - ingestion-volume-tmp:/tmp
+
+networks:
+  om_net:
+    driver: bridge
+  red_bigdata:
+    external: true
