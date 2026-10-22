@@ -313,16 +313,23 @@ def registrar_entidades_y_linaje():
         }
     ]
 
-    payload = {"entities": datasets + processes}
-
     try:
-        r = requests.post(f"{BASE_URL}/entity/bulk", json=payload, auth=AUTH, headers=HEADERS, timeout=20)
-        if r.status_code in [200, 201]:
+        # 1. Registrar primero los Datasets
+        r1 = requests.post(f"{BASE_URL}/entity/bulk", json={"entities": datasets}, auth=AUTH, headers=HEADERS, timeout=20)
+        if r1.status_code in [200, 201]:
+            logging.info("Datasets registrados exitosamente en Atlas.")
+        else:
+            logging.error(f"Error cargando datasets: {r1.status_code} - {r1.text[:300]}")
+            return False
+
+        # 2. Registrar los Procesos conectando el grafo de linaje
+        r2 = requests.post(f"{BASE_URL}/entity/bulk", json={"entities": processes}, auth=AUTH, headers=HEADERS, timeout=20)
+        if r2.status_code in [200, 201]:
             logging.info("¡Todas las entidades y relaciones de linaje fueron cargadas exitosamente en Apache Atlas!")
             logging.info("Puedes verificar el linaje en: http://localhost:21000")
             return True
         else:
-            logging.error(f"Error cargando entidades: {r.status_code} - {r.text[:300]}")
+            logging.error(f"Error cargando procesos de linaje: {r2.status_code} - {r2.text[:300]}")
             return False
     except Exception as e:
         logging.error(f"Falla conectando con Atlas en el bulk: {e}")

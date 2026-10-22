@@ -222,10 +222,10 @@
         <div>
           <div class="flex items-center gap-2">
             <span class="font-mono-geo font-bold text-xs uppercase tracking-widest text-rose-300">Alerta Sísmica Temprana Activa</span>
-            <span id="early-warning-mag" class="px-2 py-0.5 rounded-md bg-rose-500 text-white font-mono-geo font-black text-xs">6.4 Mw</span>
+            <span id="early-warning-mag" class="px-2 py-0.5 rounded-md bg-rose-500 text-white font-mono-geo font-black text-xs">-- Mw</span>
           </div>
           <p id="early-warning-text" class="text-xs text-white font-body mt-0.5 leading-snug">
-            Sismo mayor registrado en Costa de Pochutla, Oaxaca. Protocolo de monitoreo costero activado.
+            Monitoreo en tiempo real activo. Esperando telemetria sismica de PostgreSQL.
           </p>
         </div>
       </div>
@@ -245,16 +245,16 @@
       <!-- Encabezado con Ubicación y Magnitud -->
       <div class="flex items-start justify-between gap-3 mb-3.5">
         <div>
-          <div class="flex items-center gap-1.5 text-[11px] font-mono-geo uppercase tracking-widest text-rose-400 font-bold">
-            <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-            Sismo Mayor en Monitoreo
+          <div class="flex items-center gap-1.5 text-[11px] font-mono-geo uppercase tracking-widest text-slate-400 font-bold">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Monitoreo Sísmico en Vivo
           </div>
-          <h1 id="crit-lugar" class="font-headline font-bold text-2xl text-white tracking-tight mt-0.5">Oaxaca, México</h1>
-          <p id="crit-zona" class="text-xs text-slate-300 font-body">Costa de Pochutla • Fosa Mesoamericana</p>
+          <h1 id="crit-lugar" class="font-headline font-bold text-2xl text-white tracking-tight mt-0.5">En Espera de Datos</h1>
+          <p id="crit-zona" class="text-xs text-slate-300 font-body">Conectado a PostgreSQL Serving Layer</p>
         </div>
-        <div class="flex flex-col items-center justify-center bg-rose-500/20 border border-rose-500/40 rounded-2xl px-3 py-1.5 text-center min-w-[76px] shadow-inner">
-          <span id="crit-mag" class="font-mono-geo font-extrabold text-3xl text-rose-400 leading-none">6.4</span>
-          <span id="crit-escala" class="text-[10px] font-mono-geo font-bold uppercase tracking-wider text-rose-200 mt-0.5">Mw Fuerte</span>
+        <div class="flex flex-col items-center justify-center bg-white/5 border border-white/10 rounded-2xl px-3 py-1.5 text-center min-w-[76px] shadow-inner">
+          <span id="crit-mag" class="font-mono-geo font-extrabold text-3xl text-slate-400 leading-none">--</span>
+          <span id="crit-escala" class="text-[10px] font-mono-geo font-bold uppercase tracking-wider text-slate-400 mt-0.5">Sin Eventos</span>
         </div>
       </div>
 
@@ -262,25 +262,25 @@
       <div class="grid grid-cols-2 gap-2 text-xs font-mono-geo">
         <div class="bg-black/35 rounded-xl p-2.5 border border-white/5">
           <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Profundidad</span>
-          <span id="crit-prof" class="text-base font-bold text-emerald-400">18.2 km</span>
-          <span id="crit-tipo-prof" class="text-[10px] text-slate-400 block">Superficial (&lt;60km)</span>
+          <span id="crit-prof" class="text-base font-bold text-slate-400">-- km</span>
+          <span id="crit-tipo-prof" class="text-[10px] text-slate-400 block">En espera</span>
         </div>
         <div class="bg-black/35 rounded-xl p-2.5 border border-white/5">
           <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Nivel Alerta</span>
-          <span id="crit-nivel" class="text-base font-bold text-rose-400">CRITICO</span>
-          <span id="crit-peligro" class="text-[10px] text-slate-400 block">Sismo Mayor M &gt;= 5.0</span>
+          <span id="crit-nivel" class="text-base font-bold text-slate-400">EN ESPERA</span>
+          <span id="crit-peligro" class="text-[10px] text-slate-400 block">A la espera de sismos</span>
         </div>
         <div class="bg-black/35 rounded-xl p-2.5 border border-white/5">
           <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Coordenadas</span>
-          <span id="crit-coords" class="text-xs font-bold text-slate-200 block">15.74° N, 96.48° W</span>
-          <span id="crit-subzona" class="text-[10px] text-slate-400 truncate block">Fosa Mesoamericana</span>
+          <span id="crit-coords" class="text-xs font-bold text-slate-200 block">--</span>
+          <span id="crit-subzona" class="text-[10px] text-slate-400 truncate block">Esperando sismos del clúster</span>
         </div>
         <div class="bg-black/35 rounded-xl p-2.5 border border-white/5">
           <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Alerta Tsunami</span>
-          <span id="crit-tsunami" class="text-xs font-bold text-emerald-300 flex items-center gap-1">
-            <span class="material-symbols-outlined text-[14px]">check_circle</span> Sin peligro
+          <span id="crit-tsunami" class="text-xs font-bold text-slate-400 flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px]">info</span> Sin alertas
           </span>
-          <span id="crit-tsunami-desc" class="text-[10px] text-slate-400">Variación &lt; 0.3 m</span>
+          <span id="crit-tsunami-desc" class="text-[10px] text-slate-400">Esperando telemetría</span>
         </div>
       </div>
 
@@ -767,7 +767,7 @@
       }
     } catch (e) {
       console.warn("Esperando conexión con PostgreSQL:", e);
-      zonasData = obtenerDatosFallback();
+      zonasData = [];
       aplicarFiltros();
     }
   }
@@ -811,14 +811,40 @@
   }
 
   // 6. Renderizado Dinámico de Marcadores y Tarjetas
+  function resetTarjetaPrincipal() {
+    document.getElementById('crit-lugar').innerText = "En Espera de Datos";
+    document.getElementById('crit-zona').innerText = "Conectado a PostgreSQL Serving Layer";
+    document.getElementById('crit-mag').innerText = "--";
+    document.getElementById('crit-escala').innerText = "Sin Eventos";
+    document.getElementById('crit-prof').innerText = "-- km";
+    document.getElementById('crit-tipo-prof').innerText = "En espera";
+    document.getElementById('crit-nivel').innerText = "EN ESPERA";
+    document.getElementById('crit-peligro').innerText = "A la espera de sismos";
+    document.getElementById('crit-coords').innerText = "--";
+    document.getElementById('crit-subzona').innerText = "Esperando sismos del clúster";
+    const tsuEl = document.getElementById('crit-tsunami');
+    if (tsuEl) {
+      tsuEl.className = "text-xs font-bold text-slate-400 flex items-center gap-1";
+      tsuEl.innerHTML = '<span class="material-symbols-outlined text-[14px]">info</span> Sin alertas';
+    }
+    const tsuDesc = document.getElementById('crit-tsunami-desc');
+    if (tsuDesc) tsuDesc.innerText = "Esperando telemetría";
+  }
+
   function renderZonasCriticas(zonas) {
     markersLayer.clearLayers();
+    if (criticalShockwaveMarker) {
+      map.removeLayer(criticalShockwaveMarker);
+      criticalShockwaveMarker = null;
+    }
     const listEl = document.getElementById('lista-sismos');
     listEl.innerHTML = '';
 
     if (!zonas || zonas.length === 0) {
-      listEl.innerHTML = '<div class="p-2 text-center text-xs text-slate-400 font-mono-geo">Sin eventos con este filtro</div>';
+      listEl.innerHTML = '<div class="p-4 text-center text-xs text-slate-400 font-mono-geo">Sin eventos registrados en PostgreSQL.<br/>Esperando ingesta en vivo...</div>';
       document.getElementById('count-zonas').innerText = '0 reportados';
+      resetTarjetaPrincipal();
+      dismissEarlyWarning();
       return;
     }
 
@@ -949,7 +975,7 @@
     const lat = parseFloat(sismo.cuadricula_lat) || 15.74;
     const lon = parseFloat(sismo.cuadricula_lon) || -96.48;
 
-    document.getElementById('crit-lugar').innerText = sismo.zona_referencia.split(' - ')[0] || "Oaxaca, México";
+    document.getElementById('crit-lugar').innerText = (sismo.zona_referencia ? sismo.zona_referencia.split(' - ')[0] : "Zona Sísmica");
     document.getElementById('crit-zona').innerText = sismo.zona_referencia;
     document.getElementById('crit-mag').innerText = mag.toFixed(1);
     document.getElementById('crit-escala').innerText = mag >= 6.0 ? "Mw Fuerte" : (mag >= 5.0 ? "Mw Moderado" : "Mw Menor");
@@ -1019,19 +1045,24 @@
       if (res.ok) {
         data = await res.json();
       }
-      if (!data || data.length === 0) {
-        data = obtenerFallbackLambda();
-      }
-      renderizarTablaLambda(data);
+      renderizarTablaLambda(data || []);
     } catch (e) {
-      console.warn("Fallo cargando vista unificada, usando fallback:", e);
-      renderizarTablaLambda(obtenerFallbackLambda());
+      console.warn("Fallo cargando vista unificada desde PostgreSQL:", e);
+      renderizarTablaLambda([]);
     }
   }
 
   function renderizarTablaLambda(filas) {
     const tbody = document.getElementById('lambda-table-body');
     tbody.innerHTML = '';
+
+    if (!filas || filas.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" class="py-8 text-center text-slate-400 font-mono-geo">No hay registros en PostgreSQL. En cuanto el clúster ingiera sismos, aparecerán aquí automáticamente.</td></tr>';
+      document.getElementById('lambda-count-streaming').innerText = '0';
+      document.getElementById('lambda-count-batch').innerText = '0';
+      document.getElementById('lambda-count-total').innerText = '0';
+      return;
+    }
 
     let totalStreaming = 0;
     let totalBatch = 0;
@@ -1065,15 +1096,7 @@
     document.getElementById('lambda-count-total').innerText = filas.length;
   }
 
-  function obtenerFallbackLambda() {
-    return [
-      { origen_dato: "STREAMING", fecha_evento: new Date().toISOString().substring(0,10), pais_estado: "Japón", total_sismos: 4, magnitud_maxima: 6.2, magnitud_promedio: 5.4, profundidad_promedio_km: 44.5, total_alertas_tsunami: 1, sismos_peligrosos_m5: 3, ultima_actualizacion_utc: new Date().toISOString() },
-      { origen_dato: "STREAMING", fecha_evento: new Date().toISOString().substring(0,10), pais_estado: "México", total_sismos: 7, magnitud_maxima: 6.4, magnitud_promedio: 4.8, profundidad_promedio_km: 18.2, total_alertas_tsunami: 0, sismos_peligrosos_m5: 2, ultima_actualizacion_utc: new Date().toISOString() },
-      { origen_dato: "BATCH", fecha_evento: "2026-10-20", pais_estado: "Chile", total_sismos: 19, magnitud_maxima: 5.8, magnitud_promedio: 4.6, profundidad_promedio_km: 33.0, total_alertas_tsunami: 0, sismos_peligrosos_m5: 5, ultima_actualizacion_utc: "2026-10-20T23:59:00" },
-      { origen_dato: "BATCH", fecha_evento: "2026-10-20", pais_estado: "Indonesia", total_sismos: 14, magnitud_maxima: 5.6, magnitud_promedio: 4.5, profundidad_promedio_km: 28.0, total_alertas_tsunami: 0, sismos_peligrosos_m5: 3, ultima_actualizacion_utc: "2026-10-20T23:59:00" },
-      { origen_dato: "BATCH", fecha_evento: "2026-10-20", pais_estado: "California", total_sismos: 28, magnitud_maxima: 4.4, magnitud_promedio: 3.2, profundidad_promedio_km: 7.5, total_alertas_tsunami: 0, sismos_peligrosos_m5: 0, ultima_actualizacion_utc: "2026-10-20T23:59:00" }
-    ];
-  }
+
 
   // 11. Modal Analítica Gold (Chart.js)
   function toggleModalAnalitica() {
@@ -1101,8 +1124,8 @@
     }
 
     if (paisesLabels.length === 0) {
-      paisesLabels = ["California", "Chile", "Indonesia", "México", "Japón"];
-      paisesValores = [28, 19, 14, 7, 4];
+      paisesLabels = ["Sin datos aún"];
+      paisesValores = [0];
     }
 
     // Calcular distribución de severidad
@@ -1114,7 +1137,7 @@
         else severidadCounts.normal++;
       });
     } else {
-      severidadCounts = { critico: 6, moderado: 12, normal: 24 };
+      severidadCounts = { critico: 0, moderado: 0, normal: 0 };
     }
 
     // Gráfico 1: Barras Top Países
@@ -1197,7 +1220,11 @@
 
   // 12. Exportación a CSV con UTF-8 BOM
   function exportarCSV() {
-    const datos = (zonasData && zonasData.length > 0) ? zonasData : obtenerDatosFallback();
+    if (!zonasData || zonasData.length === 0) {
+      alert("No hay registros en PostgreSQL para exportar todavía.");
+      return;
+    }
+    const datos = zonasData;
     const headers = [
       "Zona_Referencia",
       "Cuadricula_Latitud",
@@ -1292,51 +1319,7 @@
     hist.scrollTop = hist.scrollHeight;
   }
 
-  // 14. Datos Fallback si PostgreSQL está iniciando
-  function obtenerDatosFallback() {
-    return [
-      {
-        zona_referencia: "Oaxaca, México - Costa de Pochutla",
-        cuadricula_lat: 15.74,
-        cuadricula_lon: -96.48,
-        magnitud_maxima: 6.4,
-        profundidad_promedio_km: 18.2,
-        nivel_alerta: "CRITICO",
-        sismos_graves_m5: 1,
-        total_sismos_registrados: 7
-      },
-      {
-        zona_referencia: "Honshu, Japón - Fosa Nipona",
-        cuadricula_lat: 38.32,
-        cuadricula_lon: 142.36,
-        magnitud_maxima: 5.1,
-        profundidad_promedio_km: 42.0,
-        nivel_alerta: "CRITICO",
-        sismos_graves_m5: 1,
-        total_sismos_registrados: 4
-      },
-      {
-        zona_referencia: "Antofagasta, Chile - Fosa de Atacama",
-        cuadricula_lat: -23.65,
-        cuadricula_lon: -70.40,
-        magnitud_maxima: 4.7,
-        profundidad_promedio_km: 95.0,
-        nivel_alerta: "MODERADO",
-        sismos_graves_m5: 0,
-        total_sismos_registrados: 19
-      },
-      {
-        zona_referencia: "Golfo de California, México - Falla Transformante",
-        cuadricula_lat: 25.50,
-        cuadricula_lon: -109.80,
-        magnitud_maxima: 4.2,
-        profundidad_promedio_km: 10.0,
-        nivel_alerta: "MODERADO",
-        sismos_graves_m5: 0,
-        total_sismos_registrados: 5
-      }
-    ];
-  }
+
 
   // Inicialización Automática al Cargar
   window.addEventListener('DOMContentLoaded', () => {

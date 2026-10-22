@@ -28,8 +28,8 @@ KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "streaming,sismos_crudos")
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://10.175.132.248:9000")
 if not MINIO_ENDPOINT.startswith("http"):
     MINIO_ENDPOINT = f"http://{MINIO_ENDPOINT}"
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "oxkD4UWJsmTRAl5djFtL")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "9Fzr4JfLBmOfgkDH4vrzPL0MKBqOg3JkZoSWTkco")
 
 # PostgreSQL Serving DB de Sayder (10.175.132.248)
 PG_HOST = os.getenv("POSTGRES_HOST", "10.175.132.248")
@@ -47,6 +47,9 @@ spark = SparkSession.builder \
     .config("spark.hadoop.fs.s3a.path.style.access", "true") \
     .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
     .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
+    .config("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider") \
+    .config("spark.hadoop.fs.s3a.connection.timeout", "5000") \
+    .config("spark.hadoop.fs.s3a.attempts.maximum", "2") \
     .getOrCreate()
 
 spark.sparkContext.setLogLevel("WARN")
@@ -103,8 +106,15 @@ df_silver = df_parsed.select(
 # 5. Función de procesamiento por micro-lote
 # ---------------------------------------------------------
 def procesar_microbatch(batch_df, batch_id):
-    if batch_df.rdd.isEmpty():
+    conteo = batch_df.count()
+    if conteo == 0:
+        print(f">>> [STREAMING] Micro-batch {batch_id}: Vacio (sin sismos nuevos en Kafka). Esperando...")
         return
+
+    print(f"
+=======================================================")
+    print(f">>> [STREAMING] Micro-batch {batch_id} RECIBIDO: {conteo} eventos sismicos")
+    print(f"=======================================================")
 
     # DEDUPLICACIÓN: Evita procesar sismos duplicados dentro del micro-lote
     batch_df_unique = batch_df.dropDuplicates(["id_sismo"])
@@ -194,6 +204,7 @@ def procesar_microbatch(batch_df, batch_id):
             ]
             execute_batch(cur, query_resumen, data_resumen)
             conn.commit()
+            print(f">>> [STREAMING] {len(data_resumen)} filas insertadas/actualizadas en gold_resumen_streaming exitosamente.")
         except Exception as e:
             print(f"Error escribiendo gold_resumen_streaming: {e}")
         finally:
@@ -280,6 +291,7 @@ def procesar_microbatch(batch_df, batch_id):
             ]
             execute_batch(cur, query_zonas, data_zonas)
             conn.commit()
+            print(f">>> [STREAMING] {len(data_zonas)} filas insertadas/actualizadas en gold_zonas_streaming exitosamente.")
         except Exception as e:
             print(f"Error escribiendo gold_zonas_streaming: {e}")
         finally:
