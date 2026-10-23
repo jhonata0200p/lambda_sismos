@@ -51,6 +51,21 @@ PG_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 PG_DB = os.getenv("POSTGRES_DB", "sismos_db")
 PG_USER = os.getenv("POSTGRES_USER", "postgres_user")
 PG_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password123")
+
+# Auto-verificación y creación de buckets Medallion en MinIO
+try:
+    from minio import Minio
+    ep_minio_clean = MINIO_ENDPOINT.replace("http://", "").replace("https://", "")
+    _minio_check = Minio(ep_minio_clean, access_key=MINIO_ACCESS_KEY, secret_key=MINIO_SECRET_KEY, secure=False)
+    for _b in ["bronze", "silver", "gold"]:
+        if not _minio_check.bucket_exists(_b):
+            _minio_check.make_bucket(_b)
+            print(f">>> [STREAMING-INIT] Bucket '{_b}' creado en MinIO ({ep_minio_clean}).", flush=True)
+        else:
+            print(f">>> [STREAMING-INIT] Bucket '{_b}' confirmado en MinIO.", flush=True)
+except Exception as _e_bkt:
+    print(f">>> [STREAMING-INIT] Aviso verificando buckets MinIO: {_e_bkt}", flush=True)
+
 # 1. Sesión de Spark con soporte S3A (MinIO remoto)
 # ---------------------------------------------------------
 spark = SparkSession.builder \
@@ -88,9 +103,17 @@ schema_single_feature = StructType([
     StructField("geometry", schema_geometry, True)
 ])
 
+schema_universal = StructType([
+    StructField("id", StringType(), True),
+    StructField("properties", schema_properties, True),
+    StructField("geometry", schema_geometry, True),
+    StructField("features", ArrayType(schema_single_feature), True)
+])
+
 # ---------------------------------------------------------
 # 3. Lectura continua desde Kafka (desde el inicio: earliest)
 # ---------------------------------------------------------
+print(f">>> [STREAMING-INIT] Conectando a Kafka: {KAFKA_BOOTSTRAP_SERVERS}, Topico: '{KAFKA_TOPIC}'...", flush=True)
 df_raw = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
@@ -100,21 +123,28 @@ df_raw = spark.readStream \
     .load()
 
 # ---------------------------------------------------------
-# 4. Estructuración Silver y Deduplicación
+# 4. Estructuración Silver y Deduplicación Universal
 # ---------------------------------------------------------
-# Ya no hacemos explode() porque el mensaje es el objeto directo
-df_parsed = df_raw.select(from_json(col("value").cast("string"), schema_single_feature).alias("feature"))
+# Soporte dual: tolera tanto eventos individuales como lotes en array FeatureCollection
+df_raw_str = df_raw.select(col("value").cast("string").alias("raw_json"))
+df_parsed = df_raw_str.select(from_json(col("raw_json"), schema_universal).alias("payload"))
 
-df_silver = df_parsed.select(
+df_features = df_parsed.select(
+    when(col("payload.features").isNotNull(), explode(col("payload.features")))
+    .otherwise(col("payload"))
+    .alias("feature")
+)
+
+df_silver = df_features.select(
     col("feature.id").alias("id_sismo"),
     to_date(from_unixtime(col("feature.properties.time") / 1000)).alias("fecha_evento"),
     from_unixtime(col("feature.properties.time") / 1000).cast("timestamp").alias("timestamp_evento"),
-    col("feature.properties.mag").alias("magnitud"),
+    coalesce(col("feature.properties.mag"), lit(0.0)).alias("magnitud"),
     col("feature.properties.place").alias("lugar"),
     col("feature.geometry.coordinates").getItem(1).alias("latitud"),
     col("feature.geometry.coordinates").getItem(0).alias("longitud"),
-    col("feature.geometry.coordinates").getItem(2).alias("profundidad_km"),
-    col("feature.properties.tsunami").alias("alerta_tsunami")
+    coalesce(col("feature.geometry.coordinates").getItem(2), lit(0.0)).alias("profundidad_km"),
+    coalesce(col("feature.properties.tsunami"), lit(0)).alias("alerta_tsunami")
 ).filter(col("id_sismo").isNotNull())
 
 # ---------------------------------------------------------
