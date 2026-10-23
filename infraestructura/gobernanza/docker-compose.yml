@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # ==============================================================================
   # APACHE ATLAS 2.3.0: Motor Central de Gobernanza, Linaje de Datos y Metadatos
@@ -12,9 +10,17 @@ services:
     environment:
       - MANAGE_LOCAL_HBASE=true
       - MANAGE_LOCAL_SOLR=true
+    command:
+      - /bin/bash
+      - -c
+      - |
+        sed -i 's/atlas.kafka.zookeeper.connection.timeout.ms=200/atlas.kafka.zookeeper.connection.timeout.ms=30000/g' /apache-atlas/conf/atlas-application.properties
+        sed -i 's/atlas.kafka.zookeeper.session.timeout.ms=400/atlas.kafka.zookeeper.session.timeout.ms=30000/g' /apache-atlas/conf/atlas-application.properties
+        sed -i 's/atlas.kafka.zookeeper.sync.time.ms=20/atlas.kafka.zookeeper.sync.time.ms=2000/g' /apache-atlas/conf/atlas-application.properties
+        /apache-atlas/bin/atlas_start.py
+        tail -fF /apache-atlas/logs/application.log
     deploy:
       resources:
         limits:
-          memory: 5120M # Límite estricto de 5.0 GB de RAM para proteger la máquina
-          cpus: "2.0"
+          memory: 4096M
     restart: unless-stopped
