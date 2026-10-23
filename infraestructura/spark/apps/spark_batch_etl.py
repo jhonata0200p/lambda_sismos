@@ -43,13 +43,25 @@ from pyspark.sql.types import (
 # -----------------------------------------------------------------------------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# Configuración MinIO Central del Equipo
-MINIO_REMOTE_ENDPOINT = os.getenv("MINIO_ENDPOINT", "10.131.229.248:9000").replace("http://", "").replace("https://", "")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "Uvp62vvXRo9GiUjZPiC6")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn")
+def sanitizar_val(val: str, default: str) -> str:
+    if not val:
+        return default
+    if "10.175.132." in val:
+        return val.replace("10.175.132.", "10.131.229.")
+    return val
 
-# Configuración PostgreSQL Serving Layer (Jhonatan en 10.131.229.248)
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "10.131.229.248")
+def sanitizar_key(val: str, default: str) -> str:
+    if not val or "oxkD4U" in val or "9Fzr4J" in val:
+        return default
+    return val
+
+# Configuración MinIO Central del Equipo (10.131.229.248:9000 con llaves oficiales)
+MINIO_REMOTE_ENDPOINT = sanitizar_val(os.getenv("MINIO_ENDPOINT", "10.131.229.248:9000"), "10.131.229.248:9000").replace("http://", "").replace("https://", "")
+MINIO_ACCESS_KEY = sanitizar_key(os.getenv("MINIO_ACCESS_KEY", "Uvp62vvXRo9GiUjZPiC6"), "Uvp62vvXRo9GiUjZPiC6")
+MINIO_SECRET_KEY = sanitizar_key(os.getenv("MINIO_SECRET_KEY", "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn"), "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn")
+
+# Configuración PostgreSQL Serving Layer (Sayder en 10.131.229.248)
+POSTGRES_HOST = sanitizar_val(os.getenv("POSTGRES_HOST", "10.131.229.248"), "10.131.229.248")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 POSTGRES_DB = os.getenv("POSTGRES_DB", "sismos_db")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres_user")
@@ -64,25 +76,36 @@ LOCAL_FALLBACK_PATH = "/opt/spark/apps/sample_batch_dia.json"
 
 
 def conectar_minio_remoto(reintentos: int = 3, espera_seg: int = 2) -> Minio:
-    """Conecta exclusivamente al servidor MinIO central del equipo con reintentos."""
-    logging.info(f"Conectando a MinIO Central en: http://{MINIO_REMOTE_ENDPOINT}...")
-    for intento in range(1, reintentos + 1):
-        try:
-            client = Minio(
-                MINIO_REMOTE_ENDPOINT,
-                access_key=MINIO_ACCESS_KEY,
-                secret_key=MINIO_SECRET_KEY,
-                secure=False
-            )
-            buckets = [b.name for b in client.list_buckets()]
-            logging.info(f"¡Conexión EXITOSA a MinIO {MINIO_REMOTE_ENDPOINT}! Buckets detectados: {buckets}")
-            return client
-        except Exception as e:
-            logging.warning(f"[Intento {intento}/{reintentos}] No fue posible conectar a MinIO ({MINIO_REMOTE_ENDPOINT}): {e}")
-            if intento < reintentos:
-                time.sleep(espera_seg)
+    """Conecta al servidor MinIO central del equipo con soporte multi-endpoint."""
+    endpoints_a_probar = [MINIO_REMOTE_ENDPOINT]
+    if "10.131.229.248:9000" not in endpoints_a_probar:
+        endpoints_a_probar.append("10.131.229.248:9000")
+    
+    credenciales = [
+        (MINIO_ACCESS_KEY, MINIO_SECRET_KEY),
+        ("Uvp62vvXRo9GiUjZPiC6", "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn")
+    ]
 
-    logging.error(f"FATAL: No se pudo establecer conexión con el MinIO central ({MINIO_REMOTE_ENDPOINT}).")
+    for ep in endpoints_a_probar:
+        for acc_k, sec_k in credenciales:
+            logging.info(f"Intentando conectar a MinIO en: http://{ep}...")
+            for intento in range(1, reintentos + 1):
+                try:
+                    client = Minio(
+                        ep,
+                        access_key=acc_k,
+                        secret_key=sec_k,
+                        secure=False
+                    )
+                    buckets = [b.name for b in client.list_buckets()]
+                    logging.info(f"¡Conexión EXITOSA a MinIO {ep}! Buckets detectados: {buckets}")
+                    return client
+                except Exception as e:
+                    logging.warning(f"[Intento {intento}/{reintentos}] No fue posible conectar a MinIO ({ep}): {e}")
+                    if intento < reintentos:
+                        time.sleep(espera_seg)
+
+    logging.error(f"FATAL: No se pudo establecer conexión con MinIO en ninguno de los endpoints: {endpoints_a_probar}.")
     return None
 
 
