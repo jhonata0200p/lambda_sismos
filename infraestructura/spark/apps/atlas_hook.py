@@ -16,7 +16,7 @@ ATLAS_HOST = os.getenv("ATLAS_HOST", "10.131.229.244")
 ATLAS_PORT = os.getenv("ATLAS_PORT", "21000")
 ATLAS_USER = os.getenv("ATLAS_USER", "admin")
 ATLAS_PASSWORD = os.getenv("ATLAS_PASSWORD", "admin")
-ATLAS_TIMEOUT = float(os.getenv("ATLAS_TIMEOUT", "2.5")) # Timeout corto para no frenar Spark/Airflow
+ATLAS_TIMEOUT = float(os.getenv("ATLAS_TIMEOUT", "10.0")) # Timeout prudente para Wi-Fi sin frenar Spark
 
 ATLAS_BASE_URL = f"http://{ATLAS_HOST}:{ATLAS_PORT}/api/atlas/v2"
 
