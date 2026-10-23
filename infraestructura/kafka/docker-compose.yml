@@ -88,6 +88,18 @@ services:
           curl -s -X DELETE http://localhost:8083/connectors/minio-sink-bronze-streaming
           curl -s -X POST -H "Content-Type: application/json" --data @/connectors/minio-sink-bronze.json http://localhost:8083/connectors
           echo "Conector MinIO S3 Sink registrado."
+
+          # Loop continuo de auto-recuperacion para reconexion automatica si MinIO tarda en arrancar
+          while true; do
+            sleep 15
+            for c in http-source-usgs minio-sink-bronze-streaming; do
+              STATUS=$$(curl -s http://localhost:8083/connectors/$$c/status 2>/dev/null | grep -o '"state":"FAILED"' || true)
+              if [ -n "$$STATUS" ]; then
+                echo ">>> [AUTO-HEAL] Conector $$c en estado FAILED. Reiniciando tarea automaticamente..."
+                curl -s -X POST "http://localhost:8083/connectors/$$c/restart?includeTasks=true&onlyFailed=true" >/dev/null 2>&1 || true
+              fi
+            done
+          done
         ) &
 
         # 3. Arrancar servicio

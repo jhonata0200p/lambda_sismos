@@ -24,13 +24,15 @@ services:
       - minio
     entrypoint: >
       /bin/sh -c "
-      echo 'Esperando que MinIO este listo...' &&
-      sleep 5 &&
-      mc alias set local http://minio:9000 minioadmin minioadmin &&
-      mc mb --ignore-existing local/bronze &&
-      mc mb --ignore-existing local/silver &&
-      mc mb --ignore-existing local/gold &&
-      mc admin user svcacct add local minioadmin --access-key 'Uvp62vvXRo9GiUjZPiC6' --secret-key 'SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn' || true &&
+      echo 'Esperando que MinIO este listo...'
+      while ! mc alias set local http://minio:9000 minioadmin minioadmin 2>/dev/null; do
+        sleep 2
+      done
+      echo 'MinIO listo. Creando buckets y credenciales...'
+      mc mb --ignore-existing local/bronze
+      mc mb --ignore-existing local/silver
+      mc mb --ignore-existing local/gold
+      mc admin user svcacct add local minioadmin --access-key 'Uvp62vvXRo9GiUjZPiC6' --secret-key 'SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn' || true
       echo 'Buckets bronze, silver, gold y credenciales de acceso creados exitosamente.'
       "
     networks:

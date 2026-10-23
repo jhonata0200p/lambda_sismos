@@ -176,6 +176,36 @@ services:
       retries: 20
 
   # ==============================================================================
+  # AUTO-CATALOGACION AUTOMATICA AL LEVANTAR EL SERVIDOR
+  # ==============================================================================
+  auto-catalog:
+    container_name: openmetadata_auto_catalog
+    image: python:3.9-slim
+    restart: "no"
+    depends_on:
+      openmetadata-server:
+        condition: service_healthy
+    volumes:
+      - ./catalogar_servicios.py:/scripts/catalogar_servicios.py:ro
+    environment:
+      OM_SERVER_URL: "http://openmetadata-server:8585/api/v1"
+      CLUSTER_KAFKA_IP: "10.131.229.5"
+      CLUSTER_POSTGRES_IP: "10.131.229.248"
+      CLUSTER_MINIO_IP: "10.131.229.248"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo "OpenMetadata Server esta saludable. Esperando 10 segundos..."
+        sleep 10
+        echo "Iniciando auto-catalogacion de base de datos, Kafka, MinIO, glosario y linaje..."
+        python /scripts/catalogar_servicios.py
+        echo "Auto-catalogacion finalizada exitosamente."
+    networks:
+      - om_net
+      - red_bigdata
+
+  # ==============================================================================
   # MOTOR DE INGESTA AUTOMATICA (Airflow Ingestion) - Perfil Opcional 'ingestion'
   # ==============================================================================
   ingestion:
