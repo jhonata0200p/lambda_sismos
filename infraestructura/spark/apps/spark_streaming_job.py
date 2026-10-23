@@ -103,13 +103,6 @@ schema_single_feature = StructType([
     StructField("geometry", schema_geometry, True)
 ])
 
-schema_universal = StructType([
-    StructField("id", StringType(), True),
-    StructField("properties", schema_properties, True),
-    StructField("geometry", schema_geometry, True),
-    StructField("features", ArrayType(schema_single_feature), True)
-])
-
 # ---------------------------------------------------------
 # 3. Lectura continua desde Kafka (desde el inicio: earliest)
 # ---------------------------------------------------------
@@ -123,19 +116,12 @@ df_raw = spark.readStream \
     .load()
 
 # ---------------------------------------------------------
-# 4. Estructuración Silver y Deduplicación Universal
+# 4. Estructuración Silver y Deduplicación
 # ---------------------------------------------------------
-# Soporte dual: tolera tanto eventos individuales como lotes en array FeatureCollection
 df_raw_str = df_raw.select(col("value").cast("string").alias("raw_json"))
-df_parsed = df_raw_str.select(from_json(col("raw_json"), schema_universal).alias("payload"))
+df_parsed = df_raw_str.select(from_json(col("raw_json"), schema_single_feature).alias("feature"))
 
-df_features = df_parsed.select(
-    when(col("payload.features").isNotNull(), explode(col("payload.features")))
-    .otherwise(col("payload"))
-    .alias("feature")
-)
-
-df_silver = df_features.select(
+df_silver = df_parsed.select(
     col("feature.id").alias("id_sismo"),
     to_date(from_unixtime(col("feature.properties.time") / 1000)).alias("fecha_evento"),
     from_unixtime(col("feature.properties.time") / 1000).cast("timestamp").alias("timestamp_evento"),
