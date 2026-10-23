@@ -12,7 +12,7 @@ if not logger.handlers:
     logger.setLevel(logging.INFO)
 
 # Configuración de Conexión a Apache Atlas (Desde Variables de Entorno)
-ATLAS_HOST = os.getenv("ATLAS_HOST", "10.175.132.244")
+ATLAS_HOST = os.getenv("ATLAS_HOST", "10.131.229.244")
 ATLAS_PORT = os.getenv("ATLAS_PORT", "21000")
 ATLAS_USER = os.getenv("ATLAS_USER", "admin")
 ATLAS_PASSWORD = os.getenv("ATLAS_PASSWORD", "admin")

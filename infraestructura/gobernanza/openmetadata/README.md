@@ -46,7 +46,7 @@ python catalogar_servicios.py
 
 ---
 
-## 4. Activos Catalogados en el Cluster (Red 10.175.132.X)
+## 4. Activos Catalogados en el Cluster (Red 10.131.229.X)
 
 El script `catalogar_servicios.py` registra de forma idempotente:
 
@@ -59,7 +59,7 @@ El script `catalogar_servicios.py` registra de forma idempotente:
    - `Medallion_Gold` (Modelos analiticos)
    - `Serving_Layer_Lambda` (Capa de servicio sin duplicados)
 
-2. **Servicio PostgreSQL Serving Layer (`10.175.132.248:5432/sismos_db`):**
+2. **Servicio PostgreSQL Serving Layer (`10.131.229.248:5432/sismos_db`):**
    - `gold_resumen_batch` (Historico Spark Batch - Kevin)
    - `gold_resumen_streaming` (Delta Spark Streaming - Josue)
    - `gold_zonas_batch` (Hotspots historicos)
@@ -67,10 +67,10 @@ El script `catalogar_servicios.py` registra de forma idempotente:
    - `vista_resumen_diario_pais` (Vista Lambda unificada)
    - `vista_zonas_criticas_frecuentes` (Vista Lambda ponderada)
 
-3. **Servicio Apache Kafka (`10.175.132.5:9092`):**
+3. **Servicio Apache Kafka (`10.131.229.5:9092`):**
    - Topico central: `sismos_crudos` (1 particion, factor de replicacion 1)
 
-4. **Servicio MinIO Data Lake (`10.175.132.248:9000`):**
+4. **Servicio MinIO Data Lake (`10.131.229.248:9000`):**
    - Buckets Medallion: `bronze`, `silver`, `gold`
 
 5. **Linaje End-to-End Conectado:**

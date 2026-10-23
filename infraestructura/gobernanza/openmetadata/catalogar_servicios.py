@@ -5,12 +5,12 @@ catalogar_servicios.py
 Script de automatizacion de gobernanza y catalogo para OpenMetadata 2.0.6.
 Registra de forma idempotente en OpenMetadata:
   1. Glosario de Negocio 'Glosario_Sismico_Global' y 7 terminos estandarizados.
-  2. Servicio de Base de Datos PostgreSQL Serving Layer (10.175.132.248:5432).
+  2. Servicio de Base de Datos PostgreSQL Serving Layer (10.131.229.248:5432).
      - Tablas Gold Batch & Streaming.
      - Vistas Lambda unificadas con esquemas, columnas y tipos.
-  3. Servicio de Mensajeria Apache Kafka (10.175.132.5:9092).
+  3. Servicio de Mensajeria Apache Kafka (10.131.229.5:9092).
      - Topico central 'sismos_crudos'.
-  4. Servicio de Almacenamiento MinIO Data Lake (10.175.132.248:9000).
+  4. Servicio de Almacenamiento MinIO Data Lake (10.131.229.248:9000).
      - Buckets Medallion: Bronze, Silver, Gold.
   5. Grafo de Linaje de Datos End-to-End (Kafka/Airflow -> MinIO -> Spark -> Postgres -> Vistas).
 =============================================================================
@@ -28,13 +28,13 @@ OM_SERVER_URL = os.getenv("OM_SERVER_URL", "http://localhost:8585/api/v1")
 OM_USER = os.getenv("OM_USER", "admin@open-metadata.org")
 OM_PASSWORD = os.getenv("OM_PASSWORD", "admin")
 
-CLUSTER_KAFKA_IP = os.getenv("CLUSTER_KAFKA_IP", "10.175.132.5")
+CLUSTER_KAFKA_IP = os.getenv("CLUSTER_KAFKA_IP", "10.131.229.5")
 CLUSTER_KAFKA_PORT = os.getenv("CLUSTER_KAFKA_PORT", "9092")
 
-CLUSTER_POSTGRES_IP = os.getenv("CLUSTER_POSTGRES_IP", "10.175.132.248")
+CLUSTER_POSTGRES_IP = os.getenv("CLUSTER_POSTGRES_IP", "10.131.229.248")
 CLUSTER_POSTGRES_PORT = os.getenv("CLUSTER_POSTGRES_PORT", "5432")
 
-CLUSTER_MINIO_IP = os.getenv("CLUSTER_MINIO_IP", "10.175.132.248")
+CLUSTER_MINIO_IP = os.getenv("CLUSTER_MINIO_IP", "10.131.229.248")
 CLUSTER_MINIO_PORT = os.getenv("CLUSTER_MINIO_PORT", "9000")
 
 

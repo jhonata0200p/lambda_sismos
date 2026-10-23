@@ -6,14 +6,14 @@ Emisor: JESÚS — Ingeniero de Orquestación Batch (Apache Airflow)
 Receptor: JHONATAN — Tech Lead / Base de Datos y Web
 
 Descripción:
-  1. Conecta exclusivamente al MinIO central del equipo (10.175.132.248:9000).
+  1. Conecta exclusivamente al MinIO central del equipo (10.131.229.248:9000).
   2. Descarga todos los lotes JSON depositados por Airflow en MinIO Bronze (/batch/).
   3. Transforma y limpia a Capa SILVER en formato Parquet particionado por fecha_evento.
   4. Modela y agrega a Capa GOLD en MinIO (Parquet) y PostgreSQL:
      - Tabla 1: gold_resumen_batch (métricas consolidadas por país y fecha)
      - Tabla 2: gold_zonas_batch (hotspots por cuadrícula lat/lon con zona_referencia)
   5. Sube automáticamente a MinIO (buckets silver y gold).
-  6. Escribe en PostgreSQL Serving Layer (10.175.132.248:5432) en las tablas físicas gold.
+  6. Escribe en PostgreSQL Serving Layer (10.131.229.248:5432) en las tablas físicas gold.
 """
 
 import os
@@ -44,12 +44,12 @@ from pyspark.sql.types import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 # Configuración MinIO Central del Equipo
-MINIO_REMOTE_ENDPOINT = os.getenv("MINIO_ENDPOINT", "10.175.132.248:9000").replace("http://", "").replace("https://", "")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "oxkD4UWJsmTRAl5djFtL")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "9Fzr4JfLBmOfgkDH4vrzPL0MKBqOg3JkZoSWTkco")
+MINIO_REMOTE_ENDPOINT = os.getenv("MINIO_ENDPOINT", "10.131.229.248:9000").replace("http://", "").replace("https://", "")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "Uvp62vvXRo9GiUjZPiC6")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn")
 
-# Configuración PostgreSQL Serving Layer (Jhonatan en 10.175.132.248)
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "10.175.132.248")
+# Configuración PostgreSQL Serving Layer (Jhonatan en 10.131.229.248)
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "10.131.229.248")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 POSTGRES_DB = os.getenv("POSTGRES_DB", "sismos_db")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres_user")
@@ -441,7 +441,7 @@ def main():
         subir_directorio_minio(minio_client, STAGING_GOLD2_DIR, bucket=bucket_gold, prefixes=["batch/zonas_criticas_frecuentes"])
 
     # -------------------------------------------------------------------------
-    # 8. Carga a PostgreSQL Serving Layer (Jhonatan en 10.175.132.248:5432)
+    # 8. Carga a PostgreSQL Serving Layer (Jhonatan en 10.131.229.248:5432)
     # -------------------------------------------------------------------------
     print("\n" + "-" * 60)
     print(">>> CARGA DIRECTA A POSTGRESQL (Serving Layer) <<<")

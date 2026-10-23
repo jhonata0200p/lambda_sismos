@@ -29,3 +29,5 @@ derby.log
 web/.env
 
 infraestructura/gobernanza/openmetadata/.env
+
+infraestructura/gobernanza/.env

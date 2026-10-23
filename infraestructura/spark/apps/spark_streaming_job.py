@@ -20,19 +20,19 @@ from pyspark.sql.types import (
 import os
 
 # Kafka de Josué (IP terminada en .5)
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "10.175.132.5:9092")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "10.131.229.5:9092")
 # Topic oficial Kafka: sismos_crudos
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "sismos_crudos")
 
-# MinIO Data Lake de Sayder (10.175.132.248)
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://10.175.132.248:9000")
+# MinIO Data Lake de Sayder (10.131.229.248)
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://10.131.229.248:9000")
 if not MINIO_ENDPOINT.startswith("http"):
     MINIO_ENDPOINT = f"http://{MINIO_ENDPOINT}"
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "oxkD4UWJsmTRAl5djFtL")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "9Fzr4JfLBmOfgkDH4vrzPL0MKBqOg3JkZoSWTkco")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "Uvp62vvXRo9GiUjZPiC6")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn")
 
-# PostgreSQL Serving DB de Sayder (10.175.132.248)
-PG_HOST = os.getenv("POSTGRES_HOST", "10.175.132.248")
+# PostgreSQL Serving DB de Sayder (10.131.229.248)
+PG_HOST = os.getenv("POSTGRES_HOST", "10.131.229.248")
 PG_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 PG_DB = os.getenv("POSTGRES_DB", "sismos_db")
 PG_USER = os.getenv("POSTGRES_USER", "postgres_user")
