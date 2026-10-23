@@ -30,7 +30,8 @@ services:
       mc mb --ignore-existing local/bronze &&
       mc mb --ignore-existing local/silver &&
       mc mb --ignore-existing local/gold &&
-      echo 'Buckets bronze, silver y gold creados exitosamente.'
+      mc admin user svcacct add local minioadmin --access-key 'oxkD4UWJsmTRAl5djFtL' --secret-key '9Fzr4JfLBmOfgkDH4vrzPL0MKBqOg3JkZoSWTkco' || true &&
+      echo 'Buckets bronze, silver, gold y credenciales de acceso creados exitosamente.'
       "
     networks:
       - red_compartida

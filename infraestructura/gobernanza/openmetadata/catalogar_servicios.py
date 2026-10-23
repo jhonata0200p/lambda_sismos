@@ -185,9 +185,9 @@ def registrar_servicio_postgresql(token):
                 "type": "Postgres",
                 "scheme": "postgresql+psycopg2",
                 "hostPort": f"{CLUSTER_POSTGRES_IP}:{CLUSTER_POSTGRES_PORT}",
-                "username": "sismos_user",
+                "username": "postgres_user",
                 "authType": {
-                    "password": "sismos_password"
+                    "password": "password123"
                 },
                 "database": "sismos_db"
             }
@@ -217,29 +217,28 @@ def registrar_servicio_postgresql(token):
 
     # Definicion de columnas comunes
     cols_resumen = [
-        {"name": "id", "dataType": "BIGINT", "description": "Clave primaria autoincremental"},
-        {"name": "fecha", "dataType": "DATE", "description": "Fecha de ocurrencia UTC de los sismos"},
-        {"name": "pais", "dataType": "VARCHAR", "dataLength": 100, "description": "Pais o region geografica estandarizada"},
+        {"name": "fecha_evento", "dataType": "DATE", "description": "Fecha de ocurrencia UTC de los sismos"},
+        {"name": "pais_estado", "dataType": "VARCHAR", "dataLength": 100, "description": "Pais o region geografica estandarizada"},
         {"name": "total_sismos", "dataType": "INT", "description": "Conteo total de sismos registrados en la ventana"},
-        {"name": "magnitud_promedio", "dataType": "FLOAT", "description": "Promedio aritmetico de magnitud"},
-        {"name": "magnitud_maxima", "dataType": "FLOAT", "description": "Maxima magnitud registrada"},
-        {"name": "magnitud_minima", "dataType": "FLOAT", "description": "Minima magnitud registrada"},
-        {"name": "profundidad_promedio", "dataType": "FLOAT", "description": "Promedio de profundidad hipocentral en kilometros"},
-        {"name": "sismos_criticos", "dataType": "INT", "description": "Total de sismos con magnitud >= 5.0"},
-        {"name": "alertas_tsunami", "dataType": "INT", "description": "Total de eventos con bandera de tsunami activa"},
-        {"name": "fecha_proceso", "dataType": "TIMESTAMP", "description": "Timestamp UTC de ejecucion del pipeline Spark"},
+        {"name": "magnitud_maxima", "dataType": "NUMERIC", "description": "Maxima magnitud registrada"},
+        {"name": "magnitud_promedio", "dataType": "NUMERIC", "description": "Promedio aritmetico de magnitud"},
+        {"name": "profundidad_promedio_km", "dataType": "NUMERIC", "description": "Promedio de profundidad hipocentral en kilometros"},
+        {"name": "total_alertas_tsunami", "dataType": "INT", "description": "Total de eventos con bandera de tsunami activa"},
+        {"name": "sismos_peligrosos_m5", "dataType": "INT", "description": "Total de sismos con magnitud >= 5.0"},
         {"name": "ultima_actualizacion_utc", "dataType": "TIMESTAMP", "description": "Timestamp UTC de la ultima actualizacion registrada"}
     ]
 
     cols_zonas = [
-        {"name": "id", "dataType": "BIGINT", "description": "Clave primaria autoincremental"},
-        {"name": "cuadricula", "dataType": "VARCHAR", "dataLength": 50, "description": "Codigo de cuadrante hotspot (lat_redondeada, lon_redondeada)"},
-        {"name": "latitud_central", "dataType": "FLOAT", "description": "Centroide latitudinal de la cuadricula"},
-        {"name": "longitud_central", "dataType": "FLOAT", "description": "Centroide longitudinal de la cuadricula"},
-        {"name": "total_eventos", "dataType": "INT", "description": "Numero de eventos sismicos en el cuadrante"},
-        {"name": "magnitud_max", "dataType": "FLOAT", "description": "Maxima magnitud registrada en la zona"},
-        {"name": "profundidad_min", "dataType": "FLOAT", "description": "Menor profundidad registrada (sismos someros)"},
-        {"name": "fecha_proceso", "dataType": "TIMESTAMP", "description": "Timestamp UTC de ejecucion del pipeline Spark"},
+        {"name": "cuadricula_lat", "dataType": "NUMERIC", "description": "Centroide latitudinal redondeado a 1 decimal"},
+        {"name": "cuadricula_lon", "dataType": "NUMERIC", "description": "Centroide longitudinal redondeado a 1 decimal"},
+        {"name": "zona_referencia", "dataType": "VARCHAR", "dataLength": 100, "description": "Zona geografica de referencia"},
+        {"name": "total_sismos_registrados", "dataType": "INT", "description": "Numero total de eventos sismicos en el cuadrante"},
+        {"name": "sismos_graves_m5", "dataType": "INT", "description": "Sismos con magnitud >= 5.0"},
+        {"name": "magnitud_maxima", "dataType": "NUMERIC", "description": "Maxima magnitud registrada en la zona"},
+        {"name": "profundidad_promedio_km", "dataType": "NUMERIC", "description": "Menor profundidad registrada (sismos someros)"},
+        {"name": "nivel_alerta", "dataType": "VARCHAR", "dataLength": 20, "description": "Nivel de alerta (NORMAL, MODERADO, CRITICO)"},
+        {"name": "fecha_primer_sismo", "dataType": "TIMESTAMP", "description": "Fecha del primer evento registrado"},
+        {"name": "fecha_ultimo_sismo", "dataType": "TIMESTAMP", "description": "Fecha del ultimo evento registrado"},
         {"name": "ultima_actualizacion_utc", "dataType": "TIMESTAMP", "description": "Timestamp UTC de la ultima actualizacion registrada"}
     ]
 
@@ -281,7 +280,7 @@ def registrar_servicio_postgresql(token):
             "displayName": "vista_resumen_diario_pais (Vista Lambda)",
             "description": "Vista SQL unificada de la Serving Layer Lambda: combina streaming delta con el historico batch sin duplicaciones de fecha/pais.",
             "tableType": "View",
-            "columns": cols_resumen + [{"name": "capa_origen", "dataType": "VARCHAR", "dataLength": 50, "description": "Identificador de procedencia (STREAMING o BATCH)"}],
+            "columns": cols_resumen + [{"name": "origen_dato", "dataType": "VARCHAR", "dataLength": 50, "description": "Identificador de procedencia (STREAMING o BATCH)"}],
             "databaseSchema": "sismos_postgresql_cluster.sismos_db.public"
         },
         {
@@ -289,20 +288,7 @@ def registrar_servicio_postgresql(token):
             "displayName": "vista_zonas_criticas_frecuentes (Vista Lambda)",
             "description": "Vista SQL unificada de zonas criticas con ponderacion de eventos, categoria de alerta (CRITICO/MODERADO/NORMAL) y maxima magnitud.",
             "tableType": "View",
-            "columns": [
-                {"name": "cuadricula", "dataType": "VARCHAR", "dataLength": 50, "description": "Codigo de cuadrante hotspot"},
-                {"name": "latitud_central", "dataType": "FLOAT"},
-                {"name": "longitud_central", "dataType": "FLOAT"},
-                {"name": "total_eventos_historico", "dataType": "INT"},
-                {"name": "total_eventos_streaming", "dataType": "INT"},
-                {"name": "eventos_totales_combinados", "dataType": "INT"},
-                {"name": "magnitud_maxima_historica", "dataType": "FLOAT"},
-                {"name": "magnitud_maxima_streaming", "dataType": "FLOAT"},
-                {"name": "magnitud_maxima_global", "dataType": "FLOAT"},
-                {"name": "profundidad_minima_global", "dataType": "FLOAT"},
-                {"name": "categoria_alerta", "dataType": "VARCHAR", "dataLength": 50, "description": "Categoria ponderada: CRITICO, MODERADO o NORMAL"},
-                {"name": "ultima_actualizacion_utc", "dataType": "TIMESTAMP"}
-            ],
+            "columns": cols_zonas,
             "databaseSchema": "sismos_postgresql_cluster.sismos_db.public"
         }
     ]
