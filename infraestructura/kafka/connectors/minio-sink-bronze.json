@@ -24,7 +24,7 @@
     "partitioner.class": "io.confluent.connect.storage.partitioner.TimeBasedPartitioner",
     "path.format": "'año'=YYYY/'mes'=MM/'dia'=dd",
     "partition.duration.ms": "86400000",
-    "locale": "es",
+    "locale": "es-ES",
     "timezone": "UTC",
     "timestamp.extractor": "Wallclock",
     "value.converter": "org.apache.kafka.connect.converters.ByteArrayConverter"
