@@ -81,9 +81,11 @@ services:
           while [ $$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8083/connectors) -ne 200 ]; do
             sleep 3
           done
-          echo "Kafka Connect listo. Registrando conectores..."
+          echo "Kafka Connect listo. Registrando/actualizando conectores..."
+          curl -s -X DELETE http://localhost:8083/connectors/http-source-usgs
           curl -s -X POST -H "Content-Type: application/json" --data @/connectors/http-source-usgs.json http://localhost:8083/connectors
           echo "Conector HTTP Source registrado."
+          curl -s -X DELETE http://localhost:8083/connectors/minio-sink-bronze-streaming
           curl -s -X POST -H "Content-Type: application/json" --data @/connectors/minio-sink-bronze.json http://localhost:8083/connectors
           echo "Conector MinIO S3 Sink registrado."
         ) &

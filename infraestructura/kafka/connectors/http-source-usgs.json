@@ -4,7 +4,7 @@
     "connector.class": "com.github.castorm.kafka.connect.http.HttpSourceConnector",
     "tasks.max": "1",
     "kafka.topic": "sismos_crudos",
-    "http.request.url": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson",
+    "http.request.url": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson",
     "http.request.method": "GET",
     "http.timer.interval.millis": "60000",
     "http.response.record.parser": "com.github.castorm.kafka.connect.http.response.jackson.JacksonKvRecordHttpResponseParser",
