@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full w-full bg-[#07131e]">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sustentación Big Data • Monitoreo Sísmico Global</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "gis-ocean": "#0a1926",
+            "gis-card": "rgba(12, 24, 38, 0.88)",
+            "gis-accent": "#06b6d4",
+            "gis-emerald": "#10b981",
+            "gis-purple": "#a855f7",
+            "gis-amber": "#f59e0b",
+            "gis-rose": "#f43f5e"
+          },
+          fontFamily: {
+            "headline": ["Plus Jakarta Sans", "sans-serif"],
+            "mono-geo": ["Space Grotesk", "monospace"],
+            "body": ["Inter", "sans-serif"]
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .hud-glass {
+      background: rgba(12, 24, 38, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.7);
+    }
+    .slide {
+      display: none;
+      opacity: 0;
+      transition: opacity 0.35s ease-in-out, transform 0.35s ease-in-out;
+      transform: scale(0.985);
+    }
+    .slide.active {
+      display: flex;
+      opacity: 1;
+      transform: scale(1);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="h-full w-full overflow-hidden bg-[#07131e] text-slate-100 font-body select-none">
+
+<!-- BARRA SUPERIOR DE PROGRESO DE LA PRESENTACIÓN -->
+<div class="fixed top-0 left-0 right-0 h-1 bg-white/10 z-50">
+  <div id="progress-bar" class="h-full bg-gradient-to-r from-cyan-500 via-emerald-400 to-purple-500 transition-all duration-300" style="width: 10%;"></div>
+</div>
+
+<!-- CONTENEDOR PRINCIPAL DE DIAPOSITIVAS (FULLSCREEN) -->
+<main class="relative w-screen h-screen flex flex-col justify-between p-6 sm:p-10 z-10 overflow-hidden">
+
+  <!-- ENCABEZADO PERSISTENTE CON LOGO Y NAVEGACIÓN RÁPIDA -->
+  <header class="flex items-center justify-between pointer-events-auto">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-800 flex items-center justify-center text-white shadow-lg shadow-cyan-950/60 ring-1 ring-cyan-300/30">
+        <span class="material-symbols-outlined text-[24px]">waves</span>
+      </div>
+      <div>
+        <span class="font-headline font-extrabold text-base tracking-tight text-white">TerraPulse <span class="text-cyan-400 font-mono-geo text-xs font-semibold">BIG DATA</span></span>
+        <p class="text-[11px] text-slate-400 font-mono-geo">Arquitectura Lambda & Data Lake Medallion</p>
+      </div>
+    </div>
+
+    <!-- Píldora de Identificación del Expositor Actual -->
+    <div id="current-speaker-badge" class="hud-glass px-4 py-1.5 rounded-full flex items-center gap-2 border-cyan-500/40 text-xs font-mono-geo">
+      <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+      <span id="speaker-name" class="font-bold text-white">Jhonatan</span>
+      <span class="text-slate-500">•</span>
+      <span id="speaker-role" class="text-cyan-300">Tech Lead</span>
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="flex items-center gap-2">
+      <a href="http://localhost:8000" target="_blank" class="hud-glass px-3 py-1.5 rounded-xl text-xs font-mono-geo text-slate-300 hover:text-white hover:bg-white/10 transition flex items-center gap-1.5" title="Abrir Dashboard Web">
+        <span class="material-symbols-outlined text-[16px] text-emerald-400">dashboard</span> Demo Web
+      </a>
+      <button onclick="toggleFullScreen()" class="hud-glass w-9 h-9 rounded-xl flex items-center justify-center text-slate-300 hover:text-white transition" title="Pantalla Completa (Tecla F)">
+        <span class="material-symbols-outlined text-[18px]">fullscreen</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================================================================= -->
+  <!-- SLIDE 1: PORTADA OFICIAL -->
+  <!-- ================================================================= -->
+  <section class="slide active flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full" data-speaker="Jhonatan" data-role="Tech Lead">
+    <div class="hud-glass rounded-3xl p-8 sm:p-12 relative overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-cyan-500 via-emerald-400 to-purple-500"></div>
+      
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 text-xs font-mono-geo font-bold uppercase tracking-wider mb-4">
+        <span class="material-symbols-outlined text-[16px]">hub</span> Proyecto de Ingeniería Big Data
+      </div>
+
+      <h1 class="font-headline font-black text-3xl sm:text-5xl text-white tracking-tight leading-tight">
+        Monitoreo Sísmico Global en Tiempo Real e Histórico
+      </h1>
+      
+      <p class="text-base sm:text-lg text-slate-300 font-body mt-4 max-w-3xl leading-relaxed">
+        Implementación de una <strong class="text-white">Arquitectura Lambda</strong> combinada con un <strong class="text-white">Data Lake Medallion (Bronze, Silver, Gold)</strong> distribuida en un clúster de 4 nodos heterogéneos.
+      </p>
+
+      <!-- Fichas de los 4 Integrantes -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 pt-6 border-t border-white/10">
+        <div class="p-3 rounded-2xl bg-black/40 border border-white/5">
+          <span class="text-[10px] font-mono-geo text-cyan-400 uppercase font-bold block">1. Ingesta Streaming</span>
+          <span class="font-headline font-bold text-sm text-white block mt-0.5">Josué</span>
+          <span class="text-[11px] font-mono-geo text-slate-400 block">Kafka & Connect (Linux)</span>
+        </div>
+        <div class="p-3 rounded-2xl bg-black/40 border border-white/5">
+          <span class="text-[10px] font-mono-geo text-amber-400 uppercase font-bold block">2. Data Lake & Serving</span>
+          <span class="font-headline font-bold text-sm text-white block mt-0.5">Sayder</span>
+          <span class="text-[11px] font-mono-geo text-slate-400 block">MinIO & Postgres (Linux)</span>
+        </div>
+        <div class="p-3 rounded-2xl bg-black/40 border border-white/5">
+          <span class="text-[10px] font-mono-geo text-purple-400 uppercase font-bold block">3. Batch & Spark</span>
+          <span class="font-headline font-bold text-sm text-white block mt-0.5">Jesús</span>
+          <span class="text-[11px] font-mono-geo text-slate-400 block">Airflow & PySpark (Win)</span>
+        </div>
+        <div class="p-3 rounded-2xl bg-black/40 border border-white/5">
+          <span class="text-[10px] font-mono-geo text-emerald-400 uppercase font-bold block">4. Lead & Gobernanza</span>
+          <span class="font-headline font-bold text-sm text-white block mt-0.5">Jhonatan</span>
+          <span class="text-[11px] font-mono-geo text-slate-400 block">Atlas & TerraPulse GIS</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- SLIDE 2: EL PROBLEMA Y LA ARQUITECTURA LAMBDA -->
+  <!-- ================================================================= -->
+  <section class="slide flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full" data-speaker="Jhonatan" data-role="Tech Lead">
+    <div class="hud-glass rounded-3xl p-8 sm:p-10">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-xs font-mono-geo uppercase tracking-wider text-cyan-400 font-bold">Concepto Arquitectónico</span>
+        <span class="text-xs font-mono-geo text-slate-400">Por qué Lambda & Medallion</span>
+      </div>
+      
+      <h2 class="font-headline font-bold text-2xl sm:text-4xl text-white tracking-tight mb-6">
+        El Dilema: Alertas en Segundos vs. Precisión Histórica
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="p-5 rounded-2xl bg-cyan-950/20 border border-cyan-500/30 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 text-cyan-300 font-mono-geo font-bold text-sm mb-2">
+              <span class="material-symbols-outlined text-[20px]">bolt</span> Speed Layer (Tiempo Real)
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed font-body">
+              Captura eventos sísmicos en vivo de la USGS cada 60s mediante Kafka y Spark Streaming. Su prioridad es la <strong>baja latencia</strong> para emitir alertas tempranas de tsunamis y sismos destructivos en milisegundos.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-white/5 text-[11px] font-mono-geo text-cyan-400">
+            Fuente: USGS all_hour.geojson (Kafka Broker:9092)
+          </div>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-purple-950/20 border border-purple-500/30 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center gap-2 text-purple-300 font-mono-geo font-bold text-sm mb-2">
+              <span class="material-symbols-outlined text-[20px]">history_toggle_drop</span> Batch Layer (Lotes Diarios)
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed font-body">
+              Extracción programada a las 07:00 AM mediante Airflow y procesamiento masivo con Spark Batch. Su prioridad es la <strong>completitud y verdad histórica</strong>, sellando cualquier hueco o interrupción temporal de red.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-white/5 text-[11px] font-mono-geo text-purple-400">
+            Fuente: USGS all_day.geojson (Airflow Scheduler)
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 p-4 rounded-2xl bg-black/40 border border-white/5 flex items-center justify-between text-xs font-mono-geo">
+        <span class="text-slate-300">
+          Ambos carriles convergen en <strong class="text-emerald-400">PostgreSQL Serving Layer</strong> resolviendo la deduplicación en tiempo de consulta.
+        </span>
+        <span class="text-emerald-300 font-bold">Cero Sobrecarga de Almacenamiento</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- SLIDE 3: TOPOLOGÍA FÍSICA DISTRIBUIDA -->
+  <!-- ================================================================= -->
+  <section class="slide flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full" data-speaker="Jhonatan" data-role="Tech Lead">
+    <div class="hud-glass rounded-3xl p-8 sm:p-10">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-xs font-mono-geo uppercase tracking-wider text-emerald-400 font-bold">Infraestructura Real</span>
+        <span class="text-xs font-mono-geo text-slate-400">4 Nodos en Red Local</span>
+      </div>
+
+      <h2 class="font-headline font-bold text-2xl sm:text-3xl text-white tracking-tight mb-6">
+        Topología Distribuida del Clúster
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="p-4 rounded-2xl bg-black/40 border border-white/10 flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[22px]">swap_horiz</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-headline font-bold text-sm text-white">Nodo Ingesta: Josué</span>
+              <span class="text-[10px] font-mono-geo px-2 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">Linux</span>
+            </div>
+            <p class="text-xs text-slate-300 mt-1 font-body">Apache Kafka Broker (KRaft), Kafka Connect HTTP Source, S3 Sink y Kafdrop UI.</p>
+            <span class="text-[11px] font-mono-geo text-slate-400 block mt-1.5">Puertos: 9092, 8083, 9009</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-black/40 border border-white/10 flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[22px]">database</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-headline font-bold text-sm text-white">Nodo Almacenamiento: Sayder</span>
+              <span class="text-[10px] font-mono-geo px-2 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-bold">Linux 4GB</span>
+            </div>
+            <p class="text-xs text-slate-300 mt-1 font-body">MinIO S3 Object Storage (Bronze, Silver, Gold) y PostgreSQL Serving Layer (Tablas y Vistas).</p>
+            <span class="text-[11px] font-mono-geo text-slate-400 block mt-1.5">Puertos: 9000 (S3), 9001 (Console), 5432 (Postgres)</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-black/40 border border-white/10 flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[22px]">memory</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-headline font-bold text-sm text-white">Nodo Cómputo: Jesús</span>
+              <span class="text-[10px] font-mono-geo px-2 py-0.2 rounded-full bg-purple-500/20 text-purple-300 font-bold">Windows</span>
+            </div>
+            <p class="text-xs text-slate-300 mt-1 font-body">Apache Spark Master/Worker (PySpark 3.5.0), Trigger Server y Apache Airflow Scheduler.</p>
+            <span class="text-[11px] font-mono-geo text-slate-400 block mt-1.5">Puertos: 8080 (Airflow), 7077/8085 (Spark), 5050 (Trigger Local red_bigdata)</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-black/40 border border-white/10 flex items-start gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[22px]">terminal</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-headline font-bold text-sm text-white">Nodo Gobernanza & Web: Jhonatan</span>
+              <span class="text-[10px] font-mono-geo px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">Windows</span>
+            </div>
+            <p class="text-xs text-slate-300 mt-1 font-body">Apache Atlas (Linaje), OpenMetadata (Catalogo) y TerraPulse GIS con GeoIA Copilot RAG.</p>
+            <span class="text-[11px] font-mono-geo text-slate-400 block mt-1.5">Puertos: 21000 (Atlas), 8585 (OpenMetadata), 8000 (Web GIS)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- SLIDE 4: JOSUÉ - INGESTA EN TIEMPO REAL CON KAFKA -->
+  <!-- ================================================================= -->
+  <section class="slide flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full" data-speaker="Josué" data-role="Data Streaming Engineer">
+    <div class="hud-glass rounded-3xl p-8 sm:p-10 border-cyan-500/30">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-xs font-mono-geo uppercase tracking-wider text-cyan-400 font-bold">Turno 1 • Josué</span>
+        <span class="text-xs font-mono-geo text-slate-400">Ingesta & Mensajería Distribuida</span>
+      </div>
+
+      <h2 class="font-headline font-bold text-2xl sm:text-3xl text-white tracking-tight mb-4">
+        Apache Kafka: El Amortiguador Elástico de Tiempo Real
+      </h2>
+
+      <div class="space-y-4 text-xs font-mono-geo">
+        <div class="p-4 rounded-2xl bg-black/35 border border-white/5 flex items-start gap-3">
+          <span class="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center shrink-0 font-bold">1</span>
+          <div>
+            <strong class="text-white text-sm block font-headline">HTTP Source Connector (USGS Polling)</strong>
+            <p class="text-slate-300 mt-0.5 font-body">Consulta periódicamente la API pública de USGS cada 60 segundos. Si detecta nuevos sismos, los extrae individualmente y los publica en el topic <code class="text-cyan-300">sismos_crudos</code>.</p>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-black/35 border border-white/5 flex items-start gap-3">
+          <span class="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center shrink-0 font-bold">2</span>
+          <div>
+            <strong class="text-white text-sm block font-headline">Persistencia Automática en MinIO Bronze (S3 Sink)</strong>
+            <p class="text-slate-300 mt-0.5 font-body">El conector S3 Sink toma los mensajes de Kafka y los escribe de inmediato en MinIO Bronze (<code class="text-cyan-300">s3a://bronze/streaming/</code>) particionados por año, mes y día, sin código manual.</p>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-black/35 border border-white/5 flex items-start gap-3">
+          <span class="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center shrink-0 font-bold">3</span>
+          <div>
+            <strong class="text-white text-sm block font-headline">Tolerancia a Fallos & Desacoplamiento Total</strong>
+            <p class="text-slate-300 mt-0.5 font-body">Si Spark o PostgreSQL sufren una sobrecarga o desconexión, Kafka retiene los mensajes en disco de forma segura. Al reanudar el servicio, los consumidores procesan desde el último offset guardado.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs font-mono-geo text-slate-400">
+        <span>Modo: <strong class="text-cyan-300">Kafka KRaft (Zero ZooKeeper)</strong></span>
+        <span>Topic Central: <code class="text-cyan-300">sismos_crudos</code> (Particiones: 1, Replicación: 1)</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- SLIDE 5: SAYDER - DATA LAKE MEDALLION & SERVING LAYER -->
+  <!-- ================================================================= -->
+  <section class="slide flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full" data-speaker="Sayder" data-role="Storage & Database Engineer">
+    <div class="hud-glass rounded-3xl p-8 sm:p-10 border-amber-500/30">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-xs font-mono-geo uppercase tracking-wider text-amber-400 font-bold">Turno 2 • Sayder</span>
+        <span class="text-xs font-mono-geo text-slate-400">Data Lake S3 & Serving Layer</span>
+      </div>
+
+      <h2 class="font-headline font-bold text-2xl sm:text-3xl text-white tracking-tight mb-4">
+        MinIO Medallion & PostgreSQL: Del Dato Crudo al Consumo
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 text-xs font-mono-geo">
+        <div class="p-3.5 rounded-2xl bg-amber-950/20 border border-amber-500/30">
+          <span class="text-[10px] text-amber-400 font-bold uppercase block mb-1">Capa Bronze (MinIO)</span>
+          <span class="font-headline font-bold text-sm text-white block">Datos Crudos JSON</span>
+          <p class="text-[11px] text-slate-300 font-body mt-1">Almacenamiento inmutable en JSON original. Divide en <code class="text-amber-300">/streaming/</code> y <code class="text-amber-300">/batch/</code>.</p>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-slate-900/60 border border-white/10">
+          <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Capa Silver (MinIO)</span>
+          <span class="font-headline font-bold text-sm text-white block">fact_sismos (Parquet)</span>
+          <p class="text-[11px] text-slate-300 font-body mt-1">Aplanado tabular, deduplicado por ID y tipado estricto. Particionado por fecha_evento.</p>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-emerald-950/20 border border-emerald-500/30">
+          <span class="text-[10px] text-emerald-400 font-bold uppercase block mb-1">Capa Gold (MinIO + Postgres)</span>
+          <span class="font-headline font-bold text-sm text-white block">Data Marts Analíticos</span>
+          <p class="text-[11px] text-slate-300 font-body mt-1">Resumen diario país y zonas críticas. Parquet en MinIO y tablas físicas en PostgreSQL.</p>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-2xl bg-black/40 border border-white/5">
+        <div class="flex items-center gap-2 text-white font-headline font-bold text-xs mb-1.5">
+          <span class="material-symbols-outlined text-[18px] text-amber-400">storage</span>
+          ¿Por qué PostgreSQL exclusivo como Serving Layer?
+        </div>
+        <p class="text-xs text-slate-300 font-body leading-relaxed">
+          PostgreSQL <strong>no aloja eventos crudos</strong> ni petabytes de datos; solo recibe los modelos Gold procesados. Esto garantiza que la aplicación web y Power BI resuelvan consultas analíticas e indexadas en <strong>menos de 10 milisegundos</strong> sin sobrecargar el Data Lake.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- SLIDE 6: JESÚS - AIRFLOW & APACHE SPARK -->
+  <!-- ================================================================= -->
+  <section class="slide flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full" data-speaker="Jesús" data-role="Processing & Orchestration Engineer">
+    <div class="hud-glass rounded-3xl p-8 sm:p-10 border-purple-500/30">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-xs font-mono-geo uppercase tracking-wider text-purple-400 font-bold">Turno 3 • Jesús</span>
+        <span class="text-xs font-mono-geo text-slate-400">Orquestación & Cómputo Distribuido</span>
+      </div>
+
+      <h2 class="font-headline font-bold text-2xl sm:text-3xl text-white tracking-tight mb-4">
+        Apache Airflow & PySpark: El Motor de Transformación Masiva
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono-geo">
+        <div class="p-4 rounded-2xl bg-purple-950/20 border border-purple-500/30 space-y-2">
+          <span class="font-headline font-bold text-sm text-white flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px] text-purple-400">schedule</span>
+            Airflow: Orquestación Batch (07:00 AM)
+          </span>
+          <p class="text-slate-300 font-body">
+            Ejecuta un DAG programado con 3 relevos estrictos:
+          </p>
+          <ul class="space-y-1 text-slate-400 font-body pl-2">
+            <li>• Tarea 1: Descarga corte 24h oficial (all_day.geojson).</li>
+            <li>• Tarea 2: Deposita en MinIO Bronze Batch (/batch/).</li>
+            <li>• Tarea 3: Dispara Spark Batch vía HTTP Trigger (:5050).</li>
+          </ul>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-500/30 space-y-2">
+          <span class="font-headline font-bold text-sm text-white flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[18px] text-cyan-400">flash_on</span>
+            Apache Spark: Streaming & Batch Unificado
+          </span>
+          <p class="text-slate-300 font-body">
+            PySpark 3.5.0 procesa ambos carriles con la misma lógica:
+          </p>
+          <ul class="space-y-1 text-slate-400 font-body pl-2">
+            <li>• Structured Streaming: Consume Kafka continuamente.</li>
+            <li>• Batch ETL: Modela el histórico consolidado.</li>
+            <li>• Escribe en MinIO Parquet y PostgreSQL en vivo.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-4 p-3.5 rounded-2xl bg-black/40 border border-white/5 text-xs font-mono-geo flex items-center justify-between">
+        <span class="text-slate-300">
+          Cluster Spark: <strong class="text-white">Master en puerto 8080</strong> con persistencia en caché de dependencias JAR.
+        </span>
+        <span class="text-purple-300 font-bold">Auto-recuperación ante Caídas</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- SLIDE 7: JHONATAN - DEDUPLICACIÓN LAMBDA EN POSTGRESQL -->
+  <!-- ================================================================= -->
+  <section class="slide flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full" data-speaker="Jhonatan" data-role="Tech Lead">
+    <div class="hud-glass rounded-3xl p-8 sm:p-10 border-emerald-500/30">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-xs font-mono-geo uppercase tracking-wider text-emerald-400 font-bold">Turno 4 • Jhonatan</span>
+        <span class="text-xs font-mono-geo text-slate-400">Serving Layer & Deduplicación SQL</span>
+      </div>
+
+      <h2 class="font-headline font-bold text-2xl sm:text-3xl text-white tracking-tight mb-4">
+        Deduplicación Lambda: La Verdad Unificada en PostgreSQL
+      </h2>
+
+      <div class="p-4 rounded-2xl bg-black/50 border border-emerald-500/30 font-mono-geo text-xs space-y-2 text-slate-300 mb-4">
+        <span class="text-emerald-400 font-bold block">-- Consulta SQL Canónica en vista_resumen_diario_pais</span>
+        <p class="text-slate-400">SELECT *, 'BATCH' AS origen_dato FROM gold_resumen_batch</p>
+        <p class="text-slate-400 font-bold text-emerald-300">UNION ALL</p>
+        <p class="text-slate-400">SELECT *, 'STREAMING' AS origen_dato FROM gold_resumen_streaming s</p>
+        <p class="text-cyan-400">WHERE NOT EXISTS (SELECT 1 FROM gold_resumen_batch b WHERE b.fecha_evento = s.fecha_evento AND b.pais_estado = s.pais_estado);</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4 text-xs font-mono-geo">
+        <div class="p-3.5 rounded-xl bg-purple-950/20 border border-purple-500/30">
+          <span class="text-purple-300 font-bold block mb-1">Registros [BATCH]</span>
+          <p class="text-slate-300 font-body text-[11px]">Eventos históricos consolidados y certificados por la corrida de las 07:00 AM.</p>
+        </div>
+        <div class="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-500/30">
+          <span class="text-cyan-300 font-bold block mb-1">Registros [STREAMING]</span>
+          <p class="text-slate-300 font-body text-[11px]">Eventos del día en curso que aún no han sido procesados por Batch. Prevalecen en vivo.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- SLIDE 8: JHONATAN - GOBERNANZA & LINAJE ACTIVO CON ATLAS -->
+  <!-- ================================================================= -->
+  <section class="slide flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full" data-speaker="Jhonatan" data-role="Tech Lead">
+    <div class="hud-glass rounded-3xl p-8 sm:p-10 border-purple-500/30">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-xs font-mono-geo uppercase tracking-wider text-purple-400 font-bold">Turno 4 (Cont.) • Jhonatan</span>
+        <span class="text-xs font-mono-geo text-slate-400">Gobernanza Empresarial</span>
+      </div>
+
+      <h2 class="font-headline font-bold text-2xl sm:text-3xl text-white tracking-tight mb-4">
+        Gobernanza Empresarial: Apache Atlas & OpenMetadata
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono-geo mb-4">
+        <div class="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-2">
+          <span class="text-purple-300 font-bold text-sm block font-headline">Clasificaciones de Seguridad</span>
+          <ul class="space-y-1.5 text-slate-300 font-body text-xs">
+            <li>• <strong class="text-amber-400">MEDALLION_BRONZE:</strong> Ingesta cruda inalterable.</li>
+            <li>• <strong class="text-slate-300">MEDALLION_SILVER:</strong> Parquet tipado y deduplicado.</li>
+            <li>• <strong class="text-emerald-400">MEDALLION_GOLD:</strong> Modelos analíticos de negocio.</li>
+            <li>• <strong class="text-rose-400">CRITICO_M5 & ALERTA_TSUNAMI:</strong> Sismos graves.</li>
+          </ul>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-black/40 border border-white/5 space-y-2">
+          <span class="text-cyan-300 font-bold text-sm block font-headline">Grafo de Linaje de 13 Datasets</span>
+          <p class="text-slate-300 font-body leading-relaxed text-xs">
+            Registrado vía API REST v2 (<code class="text-cyan-300">inicializar_atlas.py</code>). Permite auditar visualmente cómo un sismo de la USGS pasa por Kafka, MinIO, Spark y PostgreSQL hasta el dashboard.
+          </p>
+          <span class="text-[11px] font-mono-geo text-slate-400 block pt-1">Acceso en vivo: http://localhost:21000</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono-geo">
+        <div class="p-3 rounded-2xl bg-purple-950/30 border border-purple-500/30 flex items-center justify-between text-slate-300">
+          <span>Hook Atlas: <code class="text-purple-300">atlas_hook.py</code></span>
+          <span class="text-purple-400 font-bold">Linaje :21000</span>
+        </div>
+        <div class="p-3 rounded-2xl bg-cyan-950/30 border border-cyan-500/30 flex items-center justify-between text-slate-300">
+          <span>Auto-Catalog: <code class="text-cyan-300">catalogar_servicios.py</code></span>
+          <span class="text-cyan-400 font-bold">Catalogo :8585</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- SLIDE 9: DEMOSTRACIÓN EN VIVO: TERRAPULSE GIS -->
+  <!-- ================================================================= -->
+  <section class="slide flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full" data-speaker="Jhonatan" data-role="Tech Lead">
+    <div class="hud-glass rounded-3xl p-8 sm:p-10 border-emerald-500/30">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-xs font-mono-geo uppercase tracking-wider text-emerald-400 font-bold">Demostración en Vivo</span>
+        <span class="text-xs font-mono-geo text-slate-400">Centro de Mando TerraPulse GIS</span>
+      </div>
+
+      <h2 class="font-headline font-bold text-2xl sm:text-3xl text-white tracking-tight mb-4">
+        Checklist de la Demostración en el Navegador
+      </h2>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs font-mono-geo mb-5">
+        <div class="p-3 rounded-xl bg-black/40 border border-white/5">
+          <span class="text-cyan-400 font-bold block mb-1">1. Epicentro y Ondas de Choque</span>
+          <p class="text-[11px] text-slate-300 font-body">Marcador de sismo critico con anillos de impacto y fallas tectonicas.</p>
+        </div>
+        <div class="p-3 rounded-xl bg-black/40 border border-white/5">
+          <span class="text-cyan-400 font-bold block mb-1">2. Buscador Inteligente</span>
+          <p class="text-[11px] text-slate-300 font-body">Normalizacion de tildes, coincidencia fonetica y salto automatico al pais.</p>
+        </div>
+        <div class="p-3 rounded-xl bg-black/40 border border-white/5">
+          <span class="text-cyan-400 font-bold block mb-1">3. Capas Cartograficas</span>
+          <p class="text-[11px] text-slate-300 font-body">Gris Tactico, Oceanos, Satelital y OSM con confirmacion toast en vivo.</p>
+        </div>
+        <div class="p-3 rounded-xl bg-black/40 border border-white/5">
+          <span class="text-cyan-400 font-bold block mb-1">4. Paneles Bento Colapsables</span>
+          <p class="text-[11px] text-slate-300 font-body">Plegado de tarjetas metricas y boton de modo pantalla limpia completa.</p>
+        </div>
+        <div class="p-3 rounded-xl bg-black/40 border border-white/5">
+          <span class="text-cyan-400 font-bold block mb-1">5. Consola y Auditoria Lambda</span>
+          <p class="text-[11px] text-slate-300 font-body">Evidencia en vivo de deduplicacion STREAMING vs BATCH en PostgreSQL.</p>
+        </div>
+        <div class="p-3 rounded-xl bg-black/40 border border-white/5">
+          <span class="text-cyan-400 font-bold block mb-1">6. GeoIA Copilot RAG</span>
+          <p class="text-[11px] text-slate-300 font-body">FAB planeta Tierra con agente IA que consulta PostgreSQL en vivo.</p>
+        </div>
+      </div>
+
+      <div class="text-center pt-2">
+        <a href="http://localhost:8000" target="_blank" class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-headline font-bold text-sm shadow-xl shadow-emerald-950 transition">
+          <span class="material-symbols-outlined text-[20px]">play_circle</span>
+          Abrir TerraPulse GIS en Pantalla Completa (:8000)
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- SLIDE 10: CONCLUSIONES Y PREGUNTAS -->
+  <!-- ================================================================= -->
+  <section class="slide flex-1 flex flex-col justify-center max-w-5xl mx-auto w-full" data-speaker="Equipo" data-role="Defensa Final">
+    <div class="hud-glass rounded-3xl p-8 sm:p-12 text-center relative overflow-hidden">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center text-white mx-auto shadow-xl shadow-cyan-950 mb-4">
+        <span class="material-symbols-outlined text-[32px]">verified</span>
+      </div>
+
+      <h2 class="font-headline font-extrabold text-3xl sm:text-5xl text-white tracking-tight">
+        Conclusiones & Ronda de Preguntas
+      </h2>
+      
+      <p class="text-base text-slate-300 font-body mt-3 max-w-2xl mx-auto leading-relaxed">
+        El clúster demostró la viabilidad de combinar una <strong class="text-white">Arquitectura Lambda</strong> con un <strong class="text-white">Data Lake Medallion</strong> para monitoreo geofísico global resiliente, gobernado y de alta disponibilidad.
+      </p>
+
+      <div class="mt-8 pt-6 border-t border-white/10 flex items-center justify-center gap-8 text-xs font-mono-geo text-slate-400">
+        <span>Josué: Kafka Ingestion</span>
+        <span>•</span>
+        <span>Sayder: MinIO & PostgreSQL</span>
+        <span>•</span>
+        <span>Jesús: Airflow & Spark</span>
+        <span>•</span>
+        <span>Jhonatan: Atlas & Web Lead</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================= -->
+  <!-- BARRA INFERIOR DE NAVEGACIÓN Y CONTROLADORES -->
+  <!-- ================================================================= -->
+  <footer class="flex items-center justify-between pointer-events-auto">
+    <div class="text-xs font-mono-geo text-slate-400">
+      Diapositiva <strong id="slide-num" class="text-white">1</strong> de <strong id="total-slides" class="text-white">10</strong>
+    </div>
+
+    <!-- Píldora de Navegación Interactiva -->
+    <div class="hud-glass rounded-2xl p-1.5 flex items-center gap-2">
+      <button onclick="prevSlide()" class="px-3.5 py-1.5 rounded-xl hover:bg-white/10 text-xs font-mono-geo text-slate-200 transition flex items-center gap-1">
+        <span class="material-symbols-outlined text-[16px]">arrow_back</span> Anterior
+      </button>
+
+      <div class="h-4 w-px bg-white/15"></div>
+
+      <button onclick="nextSlide()" class="px-4 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-mono-geo font-bold transition flex items-center gap-1 shadow-md">
+        Siguiente <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+      </button>
+    </div>
+
+    <div class="hidden sm:flex items-center gap-2 text-[11px] font-mono-geo text-slate-500">
+      <span>Teclas: <kbd class="px-1.5 py-0.5 rounded bg-white/5 text-slate-300 border border-white/10">←</kbd> <kbd class="px-1.5 py-0.5 rounded bg-white/5 text-slate-300 border border-white/10">→</kbd> o <kbd class="px-1.5 py-0.5 rounded bg-white/5 text-slate-300 border border-white/10">Espacio</kbd></span>
+    </div>
+  </footer>
+
+</main>
+
+<!-- SCRIPT DE CONTROLADOR DE DIAPOSITIVAS -->
+<script>
+  let currentSlide = 0;
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+
+  document.getElementById('total-slides').innerText = totalSlides;
+
+  function updateSlide(idx) {
+    slides.forEach((s, i) => {
+      s.classList.remove('active');
+      if (i === idx) {
+        s.classList.add('active');
+        // Actualizar píldora de expositor
+        const speaker = s.getAttribute('data-speaker') || 'Equipo';
+        const role = s.getAttribute('data-role') || 'Presentación';
+        document.getElementById('speaker-name').innerText = speaker;
+        document.getElementById('speaker-role').innerText = role;
+      }
+    });
+
+    document.getElementById('slide-num').innerText = idx + 1;
+    const progressPct = ((idx + 1) / totalSlides) * 100;
+    document.getElementById('progress-bar').style.width = `${progressPct}%`;
+  }
+
+  function nextSlide() {
+    if (currentSlide < totalSlides - 1) {
+      currentSlide++;
+      updateSlide(currentSlide);
+    }
+  }
+
+  function prevSlide() {
+    if (currentSlide > 0) {
+      currentSlide--;
+      updateSlide(currentSlide);
+    }
+  }
+
+  // Navegación por Teclado
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+      nextSlide();
+    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      prevSlide();
+    } else if (e.key.toLowerCase() === 'f') {
+      toggleFullScreen();
+    }
+  });
+
+  function toggleFullScreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  }
+
+  updateSlide(0);
+</script>
+
+</body>
+</html>
