@@ -64,6 +64,7 @@ services:
       CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
       CONNECT_REST_ADVERTISED_HOST_NAME: "kafka_connect"
       CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT:-http://10.131.229.248:9000}"
     volumes:
       - ./connectors:/connectors
     command:
@@ -88,7 +89,8 @@ services:
           echo "Conector HTTP Source registrado."
           curl -s -X DELETE http://localhost:8083/connectors/minio-sink-bronze-streaming >/dev/null 2>&1 || true
           sleep 2
-          curl -s -X POST -H "Content-Type: application/json" --data @/connectors/minio-sink-bronze.json http://localhost:8083/connectors
+          sed "s|\"store.url\": \".*\"|\"store.url\": \"$$MINIO_ENDPOINT\"|g" /connectors/minio-sink-bronze.json > /tmp/minio-sink-bronze.json
+          curl -s -X POST -H "Content-Type: application/json" --data @/tmp/minio-sink-bronze.json http://localhost:8083/connectors
           echo "Conector MinIO S3 Sink registrado."
 
           # Loop continuo de auto-recuperacion para reconexion automatica si MinIO tarda en arrancar

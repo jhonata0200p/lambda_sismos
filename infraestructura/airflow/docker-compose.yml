@@ -72,6 +72,11 @@ x-airflow-common: &airflow-common
     # ADVERTENCIA: Usa la opción _PIP_ADDITIONAL_REQUIREMENTS SOLO para comprobaciones rápidas.
     # Para otros usos (desarrollo, pruebas y, especialmente, producción), crea o amplía la imagen de Airflow.
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    # Variables de conexion distribuida del cluster sismico
+    MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://10.131.229.248:9000}
+    MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-Uvp62vvXRo9GiUjZPiC6}
+    MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn}
+    SPARK_TRIGGER_URL: ${SPARK_TRIGGER_URL:-http://spark-master:5050/trigger}
     # The following line can be used to set a custom config file, stored in the local config folder
     AIRFLOW_CONFIG: "/opt/airflow/config/airflow.cfg"
   volumes:

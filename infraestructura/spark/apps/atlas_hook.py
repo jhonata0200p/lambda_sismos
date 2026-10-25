@@ -14,12 +14,10 @@ if not logger.handlers:
 def sanitizar_val(val: str, default: str) -> str:
     if not val:
         return default
-    if "10.175.132." in val:
-        return val.replace("10.175.132.", "10.131.229.")
     return val
 
-# Configuración de Conexión a Apache Atlas (Desde Variables de Entorno)
-ATLAS_HOST = sanitizar_val(os.getenv("ATLAS_HOST", "10.131.229.244"), "10.131.229.244")
+# Configuracion de Conexion a Apache Atlas (Laptop Jhonatan - Desde Variables de Entorno)
+ATLAS_HOST = os.getenv("ATLAS_HOST", "10.131.229.244")
 ATLAS_PORT = os.getenv("ATLAS_PORT", "21000")
 ATLAS_USER = os.getenv("ATLAS_USER", "admin")
 ATLAS_PASSWORD = os.getenv("ATLAS_PASSWORD", "admin")

@@ -22,31 +22,29 @@ import os
 def sanitizar_val(val: str, default: str) -> str:
     if not val:
         return default
-    if "10.175.132." in val:
-        return val.replace("10.175.132.", "10.131.229.")
     return val
 
 def sanitizar_key(val: str, default: str) -> str:
-    if not val or "oxkD4U" in val or "9Fzr4J" in val:
+    if not val:
         return default
     return val
 
-# Kafka de Josué (10.131.229.5)
-KAFKA_BOOTSTRAP_SERVERS = sanitizar_val(os.getenv("KAFKA_BOOTSTRAP_SERVERS", "10.131.229.5:9092"), "10.131.229.5:9092")
+# Kafka de Josue (Configurable por KAFKA_BOOTSTRAP_SERVERS)
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "10.131.229.5:9092")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "sismos_crudos")
 
-# MinIO Data Lake de Sayder (10.131.229.248)
-raw_minio = sanitizar_val(os.getenv("MINIO_ENDPOINT", "http://10.131.229.248:9000"), "http://10.131.229.248:9000")
+# MinIO Data Lake de Sayder (Configurable por MINIO_ENDPOINT)
+raw_minio = os.getenv("MINIO_ENDPOINT", "10.131.229.248:9000")
 if not raw_minio.startswith("http"):
     MINIO_ENDPOINT = f"http://{raw_minio}"
 else:
     MINIO_ENDPOINT = raw_minio
 
-MINIO_ACCESS_KEY = sanitizar_key(os.getenv("MINIO_ACCESS_KEY", "Uvp62vvXRo9GiUjZPiC6"), "Uvp62vvXRo9GiUjZPiC6")
-MINIO_SECRET_KEY = sanitizar_key(os.getenv("MINIO_SECRET_KEY", "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn"), "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "Uvp62vvXRo9GiUjZPiC6")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn")
 
-# PostgreSQL Serving DB de Sayder (10.131.229.248)
-PG_HOST = sanitizar_val(os.getenv("POSTGRES_HOST", "10.131.229.248"), "10.131.229.248")
+# PostgreSQL Serving DB de Sayder (Configurable por POSTGRES_HOST)
+PG_HOST = os.getenv("POSTGRES_HOST", "10.131.229.248")
 PG_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 PG_DB = os.getenv("POSTGRES_DB", "sismos_db")
 PG_USER = os.getenv("POSTGRES_USER", "postgres_user")

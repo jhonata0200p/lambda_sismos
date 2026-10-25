@@ -36,14 +36,14 @@ except ImportError:
 # -------------------------------------------------------------------------
 USGS_API_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"
 
-# Endpoint primario central (IP de red compartida) y fallback local
-REMOTE_MINIO_ENDPOINT = "http://10.131.229.248:9000"
-LOCAL_MINIO_ENDPOINT = "http://minio:9000"
-
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", REMOTE_MINIO_ENDPOINT)
+# Endpoint primario central (Sayder en MinIO) configurable por variable de entorno
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://10.131.229.248:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "Uvp62vvXRo9GiUjZPiC6")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn")
 MINIO_BUCKET = "bronze"
+
+# URL hacia Spark Master (Trigger HTTP :5050) en la misma maquina de Jesus
+SPARK_TRIGGER_URL = os.getenv("SPARK_TRIGGER_URL", "http://spark-master:5050/trigger")
 
 LOCAL_TEMP_DIR = "/tmp/usgs_batch"
 
@@ -120,10 +120,10 @@ def guardar_en_minio_bronze(**context):
     s3_uri = f"s3a://{MINIO_BUCKET}/{s3_key}"
 
     # Endpoints a probar: primero el central del equipo, luego el local
-    endpoints_a_probar = []
-    for ep in [MINIO_ENDPOINT, REMOTE_MINIO_ENDPOINT, "http://10.131.229.244:9000", LOCAL_MINIO_ENDPOINT]:
-        if ep and ep not in endpoints_a_probar:
-            endpoints_a_probar.append(ep)
+    endpoints_a_probar = [MINIO_ENDPOINT]
+    for fallback_ep in ["http://minio:9000", "http://10.131.229.248:9000"]:
+        if fallback_ep and fallback_ep not in endpoints_a_probar:
+            endpoints_a_probar.append(fallback_ep)
 
     credenciales_a_probar = [
         ("Uvp62vvXRo9GiUjZPiC6", "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn", "Key Activa MinIO Sayder (oxkD4U...)"),
@@ -217,10 +217,10 @@ def ejecutar_spark_batch_kevin(**context):
 
     # Endpoints posibles para invocar el Trigger Service en el clúster Spark
     spark_endpoints = [
+        SPARK_TRIGGER_URL,
         "http://spark-master:5050/trigger",
         "http://spark_master:5050/trigger",
-        "http://10.131.229.254:5050/trigger",
-        "http://10.131.229.248:5050/trigger"
+        "http://localhost:5050/trigger"
     ]
 
     spark_exitoso = False

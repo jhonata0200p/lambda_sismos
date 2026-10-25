@@ -2,8 +2,14 @@ import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from contextlib import contextmanager
+from dotenv import load_dotenv
 
-# Configuración de conexión hacia PostgreSQL Serving Layer (Laptop de Sayder)
+# Cargar variables de entorno desde .env
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(dotenv_path=env_path)
+load_dotenv()
+
+# Configuracion de conexion hacia PostgreSQL Serving Layer (Laptop de Sayder)
 DB_HOST = os.getenv("POSTGRES_HOST", "10.131.229.248")
 DB_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 DB_NAME = os.getenv("POSTGRES_DB", "sismos_db")

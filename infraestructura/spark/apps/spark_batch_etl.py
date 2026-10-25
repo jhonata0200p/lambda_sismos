@@ -46,22 +46,21 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 def sanitizar_val(val: str, default: str) -> str:
     if not val:
         return default
-    if "10.175.132." in val:
-        return val.replace("10.175.132.", "10.131.229.")
     return val
 
 def sanitizar_key(val: str, default: str) -> str:
-    if not val or "oxkD4U" in val or "9Fzr4J" in val:
+    if not val:
         return default
     return val
 
-# Configuración MinIO Central del Equipo (10.131.229.248:9000 con llaves oficiales)
-MINIO_REMOTE_ENDPOINT = sanitizar_val(os.getenv("MINIO_ENDPOINT", "10.131.229.248:9000"), "10.131.229.248:9000").replace("http://", "").replace("https://", "")
-MINIO_ACCESS_KEY = sanitizar_key(os.getenv("MINIO_ACCESS_KEY", "Uvp62vvXRo9GiUjZPiC6"), "Uvp62vvXRo9GiUjZPiC6")
-MINIO_SECRET_KEY = sanitizar_key(os.getenv("MINIO_SECRET_KEY", "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn"), "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn")
+# Configuracion MinIO Central del Equipo (Sayder) dinamica por variable de entorno
+raw_minio = os.getenv("MINIO_ENDPOINT", "10.131.229.248:9000")
+MINIO_REMOTE_ENDPOINT = raw_minio.replace("http://", "").replace("https://", "").strip()
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "Uvp62vvXRo9GiUjZPiC6")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "SVnjG3CxoqgmAZ7r3nbVAYDK2V6wvxLUGMq35YRn")
 
-# Configuración PostgreSQL Serving Layer (Sayder en 10.131.229.248)
-POSTGRES_HOST = sanitizar_val(os.getenv("POSTGRES_HOST", "10.131.229.248"), "10.131.229.248")
+# Configuracion PostgreSQL Serving Layer (Sayder) dinamica por variable de entorno
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "10.131.229.248")
 POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
 POSTGRES_DB = os.getenv("POSTGRES_DB", "sismos_db")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres_user")
@@ -78,8 +77,9 @@ LOCAL_FALLBACK_PATH = "/opt/spark/apps/sample_batch_dia.json"
 def conectar_minio_remoto(reintentos: int = 3, espera_seg: int = 2) -> Minio:
     """Conecta al servidor MinIO central del equipo con soporte multi-endpoint."""
     endpoints_a_probar = [MINIO_REMOTE_ENDPOINT]
-    if "10.131.229.248:9000" not in endpoints_a_probar:
-        endpoints_a_probar.append("10.131.229.248:9000")
+    for _fallback in ["10.131.229.248:9000", "minio:9000"]:
+        if _fallback not in endpoints_a_probar:
+            endpoints_a_probar.append(_fallback)
     
     credenciales = [
         (MINIO_ACCESS_KEY, MINIO_SECRET_KEY),

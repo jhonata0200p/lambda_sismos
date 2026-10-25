@@ -189,9 +189,9 @@ services:
       - ./catalogar_servicios.py:/scripts/catalogar_servicios.py:ro
     environment:
       OM_SERVER_URL: "http://openmetadata-server:8585/api/v1"
-      CLUSTER_KAFKA_IP: "10.131.229.5"
-      CLUSTER_POSTGRES_IP: "10.131.229.248"
-      CLUSTER_MINIO_IP: "10.131.229.248"
+      CLUSTER_KAFKA_IP: "${CLUSTER_KAFKA_IP:-10.131.229.5}"
+      CLUSTER_POSTGRES_IP: "${CLUSTER_POSTGRES_IP:-10.131.229.248}"
+      CLUSTER_MINIO_IP: "${CLUSTER_MINIO_IP:-10.131.229.248}"
     command:
       - /bin/sh
       - -c
