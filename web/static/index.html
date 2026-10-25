@@ -147,7 +147,7 @@
           </span>
         </div>
         <p class="text-xs text-slate-300 font-mono-geo flex items-center gap-1.5">
-          <span id="header-stats">PostgreSQL Serving Layer</span>
+          <span id="header-stats">Centro de Monitoreo Global</span>
           <span class="text-slate-500">•</span>
           <span id="utc-clock" class="text-emerald-400 font-semibold">--:--:-- UTC</span>
         </p>
@@ -158,10 +158,6 @@
     <div class="pointer-events-auto hidden md:flex items-center hud-glass rounded-2xl p-1 gap-1">
       <button id="btn-toggle-plates" onclick="toggleTectonicPlates()" class="px-3 py-1.5 rounded-xl bg-emerald-600/90 text-white font-mono-geo text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
         <span class="material-symbols-outlined text-[16px]">public</span> Fallas
-      </button>
-
-      <button id="btn-toggle-tiles" onclick="cycleBasemap()" class="px-3 py-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 font-mono-geo text-xs font-medium transition flex items-center gap-1.5" title="Alternar mapa base libre sin API key">
-        <span class="material-symbols-outlined text-[16px] text-sky-400">map</span> <span id="basemap-label">Gris Táctico</span>
       </button>
 
       <!-- Auditoría Lambda -->
@@ -199,13 +195,22 @@
     <div class="pointer-events-auto flex items-center gap-2">
       <div class="relative hidden sm:block">
         <span class="material-symbols-outlined absolute left-3 top-2 text-slate-400 text-[18px]">search</span>
-        <input id="input-buscar" onkeyup="filtrarZonas(this.value)" class="hud-glass pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-400 rounded-xl w-48 focus:w-60 focus:outline-none focus:ring-1 focus:ring-emerald-400 transition-all font-body" placeholder="Buscar falla o país..." type="text"/>
+        <input id="input-buscar" 
+               onkeyup="filtrarZonasKey(event)" 
+               style="background-color: #0b1726 !important; color: #ffffff !important; border-color: rgba(255,255,255,0.2) !important;" 
+               class="pl-9 pr-8 py-1.5 text-xs placeholder-slate-400 rounded-xl w-48 focus:w-64 focus:outline-none focus:ring-2 focus:ring-emerald-400 transition-all font-body border shadow-inner" 
+               placeholder="Buscar falla o pais (ej. Chile, Japon)..." 
+               type="text" 
+               autocomplete="off" />
+        <button id="btn-clear-search" onclick="limpiarBusqueda()" class="hidden absolute right-2.5 top-2 text-slate-400 hover:text-white transition" title="Limpiar busqueda">
+          <span class="material-symbols-outlined text-[16px]">close</span>
+        </button>
       </div>
       <button onclick="enfocarCriticoPrincipal()" class="hud-glass w-9 h-9 rounded-xl flex items-center justify-center text-slate-200 hover:text-white hover:bg-white/10 transition" title="Centrar Epicentro Mayor">
         <span class="material-symbols-outlined text-[20px] text-rose-400">my_location</span>
       </button>
-      <button onclick="toggleTectonicPlates()" class="hud-glass w-9 h-9 rounded-xl flex items-center justify-center text-slate-200 hover:text-white hover:bg-white/10 transition" title="Alternar Capas Tectónicas">
-        <span class="material-symbols-outlined text-[20px]">layers</span>
+      <button id="btn-alternar-capas" onclick="cycleBasemap()" class="hud-glass w-9 h-9 rounded-xl flex items-center justify-center text-slate-200 hover:text-white hover:bg-white/10 transition group" title="Alternar Capas de Mapa (Gris, Satelital, Oceanos, OSM)">
+        <span class="material-symbols-outlined text-[20px] text-sky-400 group-hover:rotate-45 transition-transform">layers</span>
       </button>
     </div>
   </header>
@@ -236,79 +241,92 @@
   </div>
 
   <!-- ================================================================= -->
-  <!-- 2. TARJETA FLOTANTE SUPERIOR IZQUIERDA: SISMO CRÍTICO EN MONITOREO -->
   <!-- ================================================================= -->
-  <div class="absolute top-20 left-4 z-20 w-[340px] sm:w-[380px] pointer-events-auto">
-    <div class="hud-glass rounded-3xl p-5 border-rose-500/30 relative overflow-hidden shadow-2xl">
+  <!-- 2. TARJETA FLOTANTE SUPERIOR IZQUIERDA: SISMO CRITICO EN MONITOREO -->
+  <!-- ================================================================= -->
+  <div id="panel-sismo-principal" class="absolute top-20 left-4 z-20 w-[340px] sm:w-[380px] pointer-events-auto transition-all duration-300">
+    <div class="hud-glass rounded-3xl p-4 sm:p-5 border-rose-500/30 relative overflow-hidden shadow-2xl">
       <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-500 via-amber-500 to-fuchsia-500"></div>
 
-      <!-- Encabezado con Ubicación y Magnitud -->
-      <div class="flex items-start justify-between gap-3 mb-3.5">
-        <div>
+      <!-- Encabezado con Ubicacion, Magnitud y Boton Plegar -->
+      <div class="flex items-start justify-between gap-3 mb-1">
+        <div class="flex-1 min-w-0">
           <div class="flex items-center gap-1.5 text-[11px] font-mono-geo uppercase tracking-widest text-slate-400 font-bold">
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Monitoreo Sísmico en Vivo
+            Monitoreo Sismico en Vivo
           </div>
-          <h1 id="crit-lugar" class="font-headline font-bold text-2xl text-white tracking-tight mt-0.5">En Espera de Datos</h1>
-          <p id="crit-zona" class="text-xs text-slate-300 font-body">Conectado a PostgreSQL Serving Layer</p>
+          <h1 id="crit-lugar" class="font-headline font-bold text-xl sm:text-2xl text-white tracking-tight mt-0.5 truncate">En Espera de Datos</h1>
+          <p id="crit-zona" class="text-xs text-slate-300 font-body truncate">Centro de Monitoreo Global</p>
         </div>
-        <div class="flex flex-col items-center justify-center bg-white/5 border border-white/10 rounded-2xl px-3 py-1.5 text-center min-w-[76px] shadow-inner">
-          <span id="crit-mag" class="font-mono-geo font-extrabold text-3xl text-slate-400 leading-none">--</span>
-          <span id="crit-escala" class="text-[10px] font-mono-geo font-bold uppercase tracking-wider text-slate-400 mt-0.5">Sin Eventos</span>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <div class="flex flex-col items-center justify-center bg-white/5 border border-white/10 rounded-2xl px-2.5 py-1 text-center min-w-[70px] shadow-inner">
+            <span id="crit-mag" class="font-mono-geo font-extrabold text-2xl sm:text-3xl text-slate-400 leading-none">--</span>
+            <span id="crit-escala" class="text-[9px] font-mono-geo font-bold uppercase tracking-wider text-slate-400 mt-0.5">Sin Eventos</span>
+          </div>
+          <button id="btn-toggle-panel-principal" onclick="togglePanelPrincipal()" class="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 flex items-center justify-center text-slate-300 hover:text-white transition" title="Plegar / Desplegar detalles de telemetria">
+            <span id="icon-toggle-panel-principal" class="material-symbols-outlined text-[20px]">expand_less</span>
+          </button>
         </div>
       </div>
 
-      <!-- Bento Grid de Métricas Tácticas -->
-      <div class="grid grid-cols-2 gap-2 text-xs font-mono-geo">
-        <div class="bg-black/35 rounded-xl p-2.5 border border-white/5">
-          <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Profundidad</span>
-          <span id="crit-prof" class="text-base font-bold text-slate-400">-- km</span>
-          <span id="crit-tipo-prof" class="text-[10px] text-slate-400 block">En espera</span>
+      <!-- Contenedor Colapsable (Metricas Bento + Footer) -->
+      <div id="body-sismo-principal" class="transition-all duration-300">
+        <!-- Bento Grid de Metricas Tacticas -->
+        <div class="grid grid-cols-2 gap-2 text-xs font-mono-geo mt-3">
+          <div class="bg-black/35 rounded-xl p-2.5 border border-white/5">
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Profundidad</span>
+            <span id="crit-prof" class="text-base font-bold text-slate-400">-- km</span>
+            <span id="crit-tipo-prof" class="text-[10px] text-slate-400 block">En espera</span>
+          </div>
+          <div class="bg-black/35 rounded-xl p-2.5 border border-white/5">
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Nivel Alerta</span>
+            <span id="crit-nivel" class="text-base font-bold text-slate-400">EN ESPERA</span>
+            <span id="crit-peligro" class="text-[10px] text-slate-400 block">A la espera de sismos</span>
+          </div>
+          <div class="bg-black/35 rounded-xl p-2.5 border border-white/5">
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Coordenadas</span>
+            <span id="crit-coords" class="text-xs font-bold text-slate-200 block">--</span>
+            <span id="crit-subzona" class="text-[10px] text-slate-400 truncate block">Esperando sismos del clúster</span>
+          </div>
+          <div class="bg-black/35 rounded-xl p-2.5 border border-white/5">
+            <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Alerta Tsunami</span>
+            <span id="crit-tsunami" class="text-xs font-bold text-slate-400 flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">info</span> Sin alertas
+            </span>
+            <span id="crit-tsunami-desc" class="text-[10px] text-slate-400">Esperando telemetria</span>
+          </div>
         </div>
-        <div class="bg-black/35 rounded-xl p-2.5 border border-white/5">
-          <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Nivel Alerta</span>
-          <span id="crit-nivel" class="text-base font-bold text-slate-400">EN ESPERA</span>
-          <span id="crit-peligro" class="text-[10px] text-slate-400 block">A la espera de sismos</span>
-        </div>
-        <div class="bg-black/35 rounded-xl p-2.5 border border-white/5">
-          <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Coordenadas</span>
-          <span id="crit-coords" class="text-xs font-bold text-slate-200 block">--</span>
-          <span id="crit-subzona" class="text-[10px] text-slate-400 truncate block">Esperando sismos del clúster</span>
-        </div>
-        <div class="bg-black/35 rounded-xl p-2.5 border border-white/5">
-          <span class="text-[10px] uppercase tracking-wider text-slate-400 block mb-0.5">Alerta Tsunami</span>
-          <span id="crit-tsunami" class="text-xs font-bold text-slate-400 flex items-center gap-1">
-            <span class="material-symbols-outlined text-[14px]">info</span> Sin alertas
+
+        <!-- Pie de Tarjeta con Estacion y Hora -->
+        <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px] font-mono-geo text-slate-300">
+          <span class="flex items-center gap-1 text-slate-400">
+            <span class="material-symbols-outlined text-[14px]">schedule</span>
+            <span id="crit-hora">--:--:-- UTC</span>
           </span>
-          <span id="crit-tsunami-desc" class="text-[10px] text-slate-400">Esperando telemetría</span>
+          <span id="crit-origen" class="text-emerald-400 font-semibold uppercase">USGS Streaming 24/7</span>
         </div>
-      </div>
-
-      <!-- Pie de Tarjeta con Estación y Hora -->
-      <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px] font-mono-geo text-slate-300">
-        <span class="flex items-center gap-1 text-slate-400">
-          <span class="material-symbols-outlined text-[14px]">schedule</span>
-          <span id="crit-hora">10:24:18 UTC</span>
-        </span>
-        <span id="crit-origen" class="text-emerald-400 font-semibold uppercase">USGS Streaming 24/7</span>
       </div>
     </div>
   </div>
 
-  <!-- ================================================================= -->
   <!-- 3. PANEL COMPACTO DE SISMOS Y ZONAS CRÍTICAS (INFERIOR IZQUIERDA) -->
   <!-- ================================================================= -->
-  <div class="absolute bottom-6 left-4 z-20 w-[340px] sm:w-[380px] pointer-events-auto hidden md:block">
+  <div id="panel-zonas-criticas" class="absolute bottom-6 left-4 z-20 w-[340px] sm:w-[380px] pointer-events-auto hidden md:block transition-all duration-300">
     <div class="hud-glass rounded-3xl p-3.5 shadow-2xl">
       <div class="flex items-center justify-between px-1 mb-2">
         <span class="text-xs font-mono-geo font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-[16px] text-amber-400">history</span> Zonas Críticas y Sismos
+          <span class="material-symbols-outlined text-[16px] text-amber-400">history</span> Zonas Criticas y Sismos
         </span>
-        <span id="count-zonas" class="text-[11px] font-mono-geo text-slate-400 bg-white/5 px-2 py-0.5 rounded-full">0 reportados</span>
+        <div class="flex items-center gap-2">
+          <span id="count-zonas" class="text-[11px] font-mono-geo text-slate-400 bg-white/5 px-2 py-0.5 rounded-full">0 reportados</span>
+          <button id="btn-toggle-panel-zonas" onclick="togglePanelZonas()" class="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 flex items-center justify-center text-slate-300 hover:text-white transition" title="Plegar / Desplegar lista de sismos">
+            <span id="icon-toggle-panel-zonas" class="material-symbols-outlined text-[16px]">expand_less</span>
+          </button>
+        </div>
       </div>
 
       <!-- Lista Escroleable de Sismos -->
-      <div id="lista-sismos" class="space-y-1.5 max-h-48 overflow-y-auto pr-1 custom-scroll">
+      <div id="lista-sismos" class="space-y-1.5 max-h-48 overflow-y-auto pr-1 custom-scroll transition-all duration-300">
         <div class="p-2.5 rounded-xl bg-black/25 text-center text-xs text-slate-400 font-mono-geo">
           Cargando telemetría sísmica...
         </div>
@@ -319,7 +337,7 @@
   <!-- ================================================================= -->
   <!-- 4. LEYENDA TECTÓNICA Y FILTROS INTERACTIVOS DE MAGNITUD (CENTRO) -->
   <!-- ================================================================= -->
-  <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-auto hidden lg:flex items-center gap-3">
+  <div id="panel-leyenda-filtros" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-auto hidden lg:flex items-center gap-3 transition-all duration-300">
     <!-- Leyenda de Tipos de Falla -->
     <div class="hud-glass rounded-2xl px-3.5 py-2 flex items-center gap-4 text-xs font-mono-geo">
       <span class="text-[10px] uppercase font-bold text-slate-400">Fallas:</span>
@@ -380,6 +398,10 @@
       </button>
       <button onclick="map.setView([15.74, -96.48], 4)" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-200 hover:text-white hover:bg-white/10 transition" title="Vista Global">
         <span class="material-symbols-outlined text-[20px]">explore</span>
+      </button>
+      <div class="h-px w-6 mx-auto bg-white/15"></div>
+      <button id="btn-mapa-completo" onclick="toggleModoMapaCompleto()" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-200 hover:text-white hover:bg-white/10 transition" title="Modo Pantalla Limpia (Ocultar / Mostrar Paneles)">
+        <span id="icon-mapa-completo" class="material-symbols-outlined text-[20px] text-emerald-400">fullscreen</span>
       </button>
     </div>
   </div>
@@ -451,7 +473,7 @@
           </thead>
           <tbody id="lambda-table-body" class="divide-y divide-white/5">
             <tr>
-              <td colspan="9" class="py-8 text-center text-slate-400">Consultando PostgreSQL Serving Layer...</td>
+              <td colspan="9" class="py-8 text-center text-slate-400">Consultando datos de sismos en tiempo real...</td>
             </tr>
           </tbody>
         </table>
@@ -539,7 +561,7 @@
   <!-- ================================================================= -->
   <!-- 8. AGENTE INTELIGENTE IA (GEOIA) EN LA ESQUINA INFERIOR DERECHA -->
   <!-- ================================================================= -->
-  <div id="geoia-modal" class="absolute bottom-20 right-4 z-30 w-80 sm:w-96 pointer-events-auto transition-all duration-300">
+  <div id="geoia-modal" class="hidden absolute bottom-24 right-4 z-30 w-80 sm:w-96 pointer-events-auto transition-all duration-300">
     <div class="hud-glass rounded-3xl p-4 border-emerald-500/30 shadow-2xl overflow-hidden relative">
       <div class="flex items-center justify-between pb-3 border-b border-white/10">
         <div class="flex items-center gap-2.5">
@@ -590,24 +612,30 @@
     </div>
   </div>
 
-  <!-- Botón Flotante para Invocar GeoIA -->
+    <!-- Botón Flotante Planeta Tierra con Carita de Bot en el Borde -->
   <div class="absolute bottom-5 right-4 z-40 pointer-events-auto">
-    <button onclick="toggleGeoIAModal()" class="hud-glass px-4 py-2.5 rounded-full flex items-center gap-2.5 hover:bg-emerald-950/60 border border-emerald-400/40 shadow-2xl transition-all duration-300 group cursor-pointer">
-      <div class="relative flex items-center justify-center">
-        <div class="w-7 h-7 rounded-full bg-emerald-500/30 flex items-center justify-center text-emerald-400">
-          <span class="material-symbols-outlined text-[18px]">smart_toy</span>
-        </div>
-        <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#07131e] animate-pulse"></span>
+    <button id="btn-geoia-fab" 
+            onclick="toggleGeoIAModal()" 
+            class="relative w-14 h-14 rounded-full p-0 flex items-center justify-center bg-gradient-to-br from-sky-400 via-blue-600 to-indigo-950 border-2 border-cyan-300/60 shadow-[0_4px_20px_rgba(14,165,233,0.45)] hover:scale-110 hover:shadow-[0_0_25px_rgba(56,189,248,0.7)] transition-all duration-300 cursor-pointer group"
+            title="Abrir GeoIA Asistente Sísmico">
+      
+      <!-- Efecto de atmósfera y brillo del planeta Tierra -->
+      <div class="absolute inset-0 rounded-full bg-radial from-transparent via-cyan-400/10 to-blue-900/60 pointer-events-none"></div>
+      <div class="absolute inset-0 rounded-full bg-gradient-to-t from-transparent via-transparent to-white/25 pointer-events-none"></div>
+      
+      <!-- Icono de Continentes / Planeta Tierra -->
+      <span class="material-symbols-outlined text-[32px] text-cyan-100 drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)] group-hover:rotate-12 transition-transform duration-500">public</span>
+
+      <!-- Carita de Bot en el borde del planeta -->
+      <div class="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 border-2 border-[#07131e] flex items-center justify-center text-white shadow-md ring-1 ring-emerald-300/50">
+        <span class="material-symbols-outlined text-[13px]">smart_toy</span>
       </div>
-      <div class="flex flex-col text-left">
-        <div class="flex items-center gap-1.5">
-          <span class="text-xs font-headline font-bold text-white group-hover:text-emerald-300 transition">GeoIA Consultor</span>
-          <span class="text-[9px] font-mono-geo px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase font-bold">En línea</span>
-        </div>
-        <span class="text-[10px] text-slate-400 font-mono-geo">Preguntar sobre sismos...</span>
-      </div>
+
+      <!-- Indicador online pulsante -->
+      <span class="absolute bottom-0 left-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#07131e] animate-pulse"></span>
     </button>
   </div>
+
 
 </div>
 
@@ -676,6 +704,31 @@
     cargarFallasTectonicas();
   }
 
+  // Helper de Notificaciones Tácticas (Toast)
+  function showToast(mensaje, icono = 'info') {
+    let toast = document.getElementById('map-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'map-toast';
+      toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 transform -translate-y-2';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = `
+      <div class="hud-glass px-4 py-2 rounded-2xl border border-sky-400/40 shadow-xl flex items-center gap-2 text-xs font-mono-geo text-sky-200">
+        <span class="material-symbols-outlined text-[18px] text-sky-400">${icono}</span>
+        <span>${mensaje}</span>
+      </div>
+    `;
+    toast.classList.remove('opacity-0', '-translate-y-2');
+    toast.classList.add('opacity-100', 'translate-y-0');
+    clearTimeout(window._toastTimeout);
+    window._toastTimeout = setTimeout(() => {
+      toast.classList.remove('opacity-100', 'translate-y-0');
+      toast.classList.add('opacity-0', '-translate-y-2');
+    }, 2800);
+  }
+
+  // Alternar mapa base satelital / táctico / océanos / OSM
   function cycleBasemap() {
     const keys = ["dark", "ocean", "satellite", "osm"];
     let nextIdx = (keys.indexOf(activeBasemapKey) + 1) % keys.length;
@@ -693,6 +746,47 @@
 
     const label = document.getElementById('basemap-label');
     if (label) label.innerText = capa.nombre;
+    showToast(`Capa activa: ${capa.nombre}`, 'layers');
+  }
+
+  // Control de Colapso de Paneles HUD
+  function togglePanelPrincipal() {
+    const body = document.getElementById('body-sismo-principal');
+    const icon = document.getElementById('icon-toggle-panel-principal');
+    if (!body || !icon) return;
+    const isHidden = body.classList.toggle('hidden');
+    icon.innerText = isHidden ? 'expand_more' : 'expand_less';
+  }
+
+  function togglePanelZonas() {
+    const list = document.getElementById('lista-sismos');
+    const icon = document.getElementById('icon-toggle-panel-zonas');
+    if (!list || !icon) return;
+    const isHidden = list.classList.toggle('hidden');
+    icon.innerText = isHidden ? 'expand_more' : 'expand_less';
+  }
+
+  let modoMapaCompleto = false;
+  function toggleModoMapaCompleto() {
+    modoMapaCompleto = !modoMapaCompleto;
+    const p1 = document.getElementById('panel-sismo-principal');
+    const p2 = document.getElementById('panel-zonas-criticas');
+    const p3 = document.getElementById('panel-leyenda-filtros');
+    const icon = document.getElementById('icon-mapa-completo');
+
+    if (modoMapaCompleto) {
+      if (p1) p1.classList.add('hidden');
+      if (p2) p2.classList.add('hidden');
+      if (p3) p3.classList.add('hidden');
+      if (icon) icon.innerText = 'fullscreen_exit';
+      showToast('Modo Pantalla Limpia: Paneles ocultados', 'fullscreen_exit');
+    } else {
+      if (p1) p1.classList.remove('hidden');
+      if (p2) p2.classList.remove('hidden');
+      if (p3) p3.classList.remove('hidden');
+      if (icon) icon.innerText = 'fullscreen';
+      showToast('Paneles de telemetria restaurados', 'fullscreen');
+    }
   }
 
   // 2. Carga de Placas y Fallas Tectónicas GeoJSON con Código de Color
@@ -746,14 +840,14 @@
   setInterval(updateClock, 1000);
   updateClock();
 
-  // 4. Consulta de Datos en Vivo desde PostgreSQL Serving Layer
+  // 4. Consulta de Datos en Vivo desde Serving Layer
   async function refreshData() {
     try {
       // A. Consultar Zonas Críticas y Sismos
       const resZonas = await fetch('/api/zonas-criticas');
       if (resZonas.ok) {
         zonasData = await resZonas.json();
-        aplicarFiltros();
+        aplicarFiltros(false);
       }
 
       // B. Consultar KPIs Globales
@@ -762,17 +856,53 @@
         const kpis = await resKpis.json();
         const headerStats = document.getElementById('header-stats');
         if (headerStats) {
-          headerStats.innerText = `Sismos: ${kpis.total_sismos} • Críticos: ${kpis.total_criticas} (Streaming: ${kpis.desglose_origen.streaming} | Batch: ${kpis.desglose_origen.batch})`;
+          headerStats.innerText = `Sismos: ${kpis.total_sismos} | Críticos: ${kpis.total_criticas} (Streaming: ${kpis.desglose_origen.streaming} | Batch: ${kpis.desglose_origen.batch})`;
         }
       }
     } catch (e) {
-      console.warn("Esperando conexión con PostgreSQL:", e);
+      console.warn("Esperando conexión con Serving Layer:", e);
       zonasData = [];
-      aplicarFiltros();
+      aplicarFiltros(false);
     }
   }
 
-  // 5. Filtros Interactivos de Magnitud y Búsqueda
+  // Diccionario Geográfico de Referencia Rápida para Búsqueda Global
+  const COORDENADAS_PAISES = {
+    "chile": { lat: -35.6751, lon: -71.5430, zoom: 5, nombre: "Chile", aliases: ["chile", "valparaiso", "santiago", "atacama", "coquimbo", "antofagasta", "iquique"] },
+    "japon": { lat: 36.2048, lon: 138.2529, zoom: 5, nombre: "Japón", aliases: ["japan", "japon", "tokyo", "tokio", "honshu", "hokkaido", "kyushu", "fukushima", "osaka"] },
+    "mexico": { lat: 23.6345, lon: -102.5528, zoom: 5, nombre: "México", aliases: ["mexico", "oaxaca", "guerrero", "chiapas", "michoacan", "baja california", "colima", "puebla"] },
+    "estados unidos": { lat: 37.0902, lon: -95.7129, zoom: 4, nombre: "Estados Unidos", aliases: ["usa", "united states", "eeuu", "estados unidos", "ee.uu."] },
+    "california": { lat: 36.7783, lon: -119.4179, zoom: 6, nombre: "California, EE.UU.", aliases: ["california", "san andreas", "los angeles", "san francisco", "geysers", "ridgecrest"] },
+    "alaska": { lat: 64.2008, lon: -149.4937, zoom: 5, nombre: "Alaska, EE.UU.", aliases: ["alaska", "anchorage", "aleutian", "aleutianas", "fairbanks", "susitna"] },
+    "peru": { lat: -9.19, lon: -75.0152, zoom: 5, nombre: "Perú", aliases: ["peru", "lima", "arequipa", "callao", "ica", "cusco"] },
+    "colombia": { lat: 4.5709, lon: -74.2973, zoom: 5, nombre: "Colombia", aliases: ["colombia", "bogota", "santander", "mesa de los santos", "choco", "narino"] },
+    "ecuador": { lat: -1.8312, lon: -78.1834, zoom: 6, nombre: "Ecuador", aliases: ["ecuador", "quito", "guayaquil", "esmeraldas", "manabi"] },
+    "indonesia": { lat: -0.7893, lon: 113.9213, zoom: 5, nombre: "Indonesia", aliases: ["indonesia", "sumatra", "java", "bali", "sonda", "sulawesi", "banda"] },
+    "filipinas": { lat: 12.8797, lon: 121.7740, zoom: 6, nombre: "Filipinas", aliases: ["philippines", "filipinas", "manila", "mindanao", "luzon", "davao"] },
+    "turquia": { lat: 38.9637, lon: 35.2433, zoom: 5, nombre: "Turquía", aliases: ["turkey", "turquia", "istanbul", "anatolian", "anatolia", "kahramanmaras", "hatay"] },
+    "grecia": { lat: 39.0742, lon: 21.8243, zoom: 6, nombre: "Grecia", aliases: ["greece", "grecia", "ateneas", "athens", "crete", "creta"] },
+    "italia": { lat: 41.8719, lon: 12.5674, zoom: 6, nombre: "Italia", aliases: ["italy", "italia", "rome", "roma", "sicilia", "etna", "napoles"] },
+    "nueva zelanda": { lat: -40.9006, lon: 174.8860, zoom: 5, nombre: "Nueva Zelanda", aliases: ["new zealand", "nueva zelanda", "auckland", "christchurch", "kermadec"] },
+    "islandia": { lat: 64.9631, lon: -19.0208, zoom: 6, nombre: "Islandia", aliases: ["iceland", "islandia", "reykjavik", "reykjanes", "grindavik"] },
+    "haiti": { lat: 18.9712, lon: -72.2852, zoom: 7, nombre: "Haití", aliases: ["haiti", "puerto principe", "port-au-prince"] },
+    "guatemala": { lat: 15.7835, lon: -90.2308, zoom: 7, nombre: "Guatemala", aliases: ["guatemala"] },
+    "el salvador": { lat: 13.7942, lon: -88.8965, zoom: 7, nombre: "El Salvador", aliases: ["el salvador", "salvador"] },
+    "costa rica": { lat: 9.7489, lon: -83.7534, zoom: 7, nombre: "Costa Rica", aliases: ["costa rica", "san jose"] },
+    "panama": { lat: 8.5379, lon: -80.7821, zoom: 7, nombre: "Panamá", aliases: ["panama"] },
+    "argentina": { lat: -38.4161, lon: -63.6167, zoom: 4, nombre: "Argentina", aliases: ["argentina", "mendoza", "san juan", "jujuy", "salta"] },
+    "taiwan": { lat: 23.6978, lon: 120.9605, zoom: 7, nombre: "Taiwán", aliases: ["taiwan", "taipei", "hualien"] },
+    "papua": { lat: -6.314993, lon: 143.95555, zoom: 6, nombre: "Papúa Nueva Guinea", aliases: ["papua", "papua new guinea", "papua nueva guinea", "new guinea"] },
+    "fiji": { lat: -17.7134, lon: 178.0650, zoom: 6, nombre: "Fiyi / Tonga", aliases: ["fiji", "fiyi", "tonga", "kermadec"] }
+  };
+
+  function normalizarTexto(txt) {
+    if (!txt) return '';
+    return txt.toString().toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  }
+
+  // 5. Filtros Interactivos de Magnitud y Búsqueda Inteligente
   function filtrarPorMagnitud(min, max, btnEl) {
     filtroMagMin = min;
     filtroMagMax = max;
@@ -785,17 +915,48 @@
       btnEl.className = 'mag-chip px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-bold transition flex items-center gap-1.5';
     }
 
-    aplicarFiltros();
+    aplicarFiltros(false);
+  }
+
+  function filtrarZonasKey(event) {
+    const input = document.getElementById('input-buscar');
+    const btnClear = document.getElementById('btn-clear-search');
+    const val = input ? input.value.trim() : '';
+
+    if (btnClear) {
+      if (val.length > 0) {
+        btnClear.classList.remove('hidden');
+      } else {
+        btnClear.classList.add('hidden');
+      }
+    }
+
+    if (event.key === 'Enter') {
+      aplicarFiltros(true);
+    } else {
+      aplicarFiltros(false);
+    }
   }
 
   function filtrarZonas(termino) {
-    aplicarFiltros();
+    aplicarFiltros(false);
   }
 
-  function aplicarFiltros() {
-    const inputVal = (document.getElementById('input-buscar')?.value || '').toLowerCase().trim();
+  function limpiarBusqueda() {
+    const input = document.getElementById('input-buscar');
+    const btnClear = document.getElementById('btn-clear-search');
+    if (input) input.value = '';
+    if (btnClear) btnClear.classList.add('hidden');
+    aplicarFiltros(false);
+    showToast("Búsqueda reestablecida", "clear_all");
+  }
+
+  function aplicarFiltros(esEnter = false) {
+    const inputVal = (document.getElementById('input-buscar')?.value || '').trim();
+    const queryNorm = normalizarTexto(inputVal);
     let filtrados = [...zonasData];
 
+    // 1. Filtrar por rango de magnitud
     if (filtroMagMin !== null && filtroMagMax !== null) {
       filtrados = filtrados.filter(z => {
         const mag = parseFloat(z.magnitud_maxima) || 0;
@@ -803,8 +964,47 @@
       });
     }
 
-    if (inputVal) {
-      filtrados = filtrados.filter(z => (z.zona_referencia || '').toLowerCase().includes(inputVal));
+    // 2. Filtrar por término de búsqueda inteligente
+    if (queryNorm.length > 0) {
+      let aliasCoincidentes = [queryNorm];
+      for (const [keyPais, infoPais] of Object.entries(COORDENADAS_PAISES)) {
+        if (infoPais.aliases.some(a => normalizarTexto(a) === queryNorm || normalizarTexto(a).includes(queryNorm) || queryNorm.includes(normalizarTexto(a)))) {
+          aliasCoincidentes.push(...infoPais.aliases.map(a => normalizarTexto(a)));
+          aliasCoincidentes.push(normalizarTexto(keyPais));
+        }
+      }
+      aliasCoincidentes = [...new Set(aliasCoincidentes)];
+
+      filtrados = filtrados.filter(z => {
+        const zonaNorm = normalizarTexto(z.zona_referencia || '');
+        return aliasCoincidentes.some(term => zonaNorm.includes(term));
+      });
+
+      // Navegación automática en el mapa al presionar Enter o con búsqueda específica
+      if (esEnter || queryNorm.length >= 4) {
+        if (filtrados.length > 0) {
+          const top = filtrados[0];
+          const lat = parseFloat(top.cuadricula_lat);
+          const lon = parseFloat(top.cuadricula_lon);
+          map.flyTo([lat, lon], 6, { duration: 1.5 });
+          showToast(`Ubicado: ${top.zona_referencia} (${filtrados.length} evento(s))`, 'travel_explore');
+        } else {
+          // Búsqueda en diccionario de países si no hay sismos en el cuadrante actual
+          let paisEncontrado = null;
+          for (const [keyPais, infoPais] of Object.entries(COORDENADAS_PAISES)) {
+            if (infoPais.aliases.some(a => normalizarTexto(a) === queryNorm || queryNorm.includes(normalizarTexto(a)))) {
+              paisEncontrado = infoPais;
+              break;
+            }
+          }
+          if (paisEncontrado) {
+            map.flyTo([paisEncontrado.lat, paisEncontrado.lon], paisEncontrado.zoom, { duration: 1.5 });
+            showToast(`Navegando a ${paisEncontrado.nombre} (Sin eventos en 24h)`, 'explore');
+          } else if (esEnter) {
+            showToast(`Sin resultados para: "${inputVal}"`, 'search_off');
+          }
+        }
+      }
     }
 
     renderZonasCriticas(filtrados);
@@ -813,7 +1013,7 @@
   // 6. Renderizado Dinámico de Marcadores y Tarjetas
   function resetTarjetaPrincipal() {
     document.getElementById('crit-lugar').innerText = "En Espera de Datos";
-    document.getElementById('crit-zona').innerText = "Conectado a PostgreSQL Serving Layer";
+    document.getElementById('crit-zona').innerText = "Centro de Monitoreo Global";
     document.getElementById('crit-mag').innerText = "--";
     document.getElementById('crit-escala').innerText = "Sin Eventos";
     document.getElementById('crit-prof').innerText = "-- km";
