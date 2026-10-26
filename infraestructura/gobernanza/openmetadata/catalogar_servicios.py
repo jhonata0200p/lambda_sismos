@@ -45,10 +45,6 @@ def api_request(method, endpoint, payload=None, token=None):
     }
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    else:
-        # Fallback Basic Auth si no hay token aun
-        creds = base64.b64encode(b"admin:admin").decode("utf-8")
-        headers["Authorization"] = f"Basic {creds}"
 
     try:
         resp = requests.request(method, url, json=payload, headers=headers, timeout=30)
