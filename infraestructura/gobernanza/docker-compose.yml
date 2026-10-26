@@ -17,6 +17,7 @@ services:
         sed -i 's/atlas.kafka.zookeeper.connection.timeout.ms=200/atlas.kafka.zookeeper.connection.timeout.ms=30000/g' /apache-atlas/conf/atlas-application.properties
         sed -i 's/atlas.kafka.zookeeper.session.timeout.ms=400/atlas.kafka.zookeeper.session.timeout.ms=30000/g' /apache-atlas/conf/atlas-application.properties
         sed -i 's/atlas.kafka.zookeeper.sync.time.ms=20/atlas.kafka.zookeeper.sync.time.ms=2000/g' /apache-atlas/conf/atlas-application.properties
+        rm -rf /apache-atlas/data/kafka/zk/* /apache-atlas/data/kafka/kafka/* 2>/dev/null || true
         /apache-atlas/bin/atlas_start.py
         tail -fF /apache-atlas/logs/application.log
     deploy:
