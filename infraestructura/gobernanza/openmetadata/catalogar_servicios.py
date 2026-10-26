@@ -21,8 +21,7 @@ import sys
 import time
 import json
 import base64
-import urllib.request
-import urllib.error
+import requests
 
 OM_SERVER_URL = os.getenv("OM_SERVER_URL", "http://localhost:8585/api/v1")
 OM_USER = os.getenv("OM_USER", "admin@open-metadata.org")
@@ -51,27 +50,21 @@ def api_request(method, endpoint, payload=None, token=None):
         creds = base64.b64encode(b"admin:admin").decode("utf-8")
         headers["Authorization"] = f"Basic {creds}"
 
-    data = json.dumps(payload).encode("utf-8") if payload is not None else None
-    req = urllib.request.Request(url, data=data, headers=headers, method=method)
-
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            content = resp.read().decode("utf-8")
-            if content:
-                return json.loads(content)
-            return {}
-    except urllib.error.HTTPError as e:
-        error_body = e.read().decode("utf-8", errors="ignore")
-        # Si es 409 (Conflict/Already exists), no es fatal para operaciones idempotentes
-        if e.code == 409:
+        resp = requests.request(method, url, json=payload, headers=headers, timeout=30)
+        if resp.status_code in [200, 201]:
+            return resp.json() if resp.text else {}
+        elif resp.status_code == 409:
+            # 409 Conflict (el recurso ya existe), comportamiento idempotente normal
             try:
-                return json.loads(error_body)
+                return resp.json()
             except Exception:
                 return {"status": "conflict_exists"}
-        print(f"[ERROR HTTP {e.code}] en {method} {url}: {error_body}")
-        raise
-    except urllib.error.URLError as e:
-        print(f"[ERROR CONEXION] en {method} {url}: {e.reason}")
+        else:
+            print(f"[ERROR HTTP {resp.status_code}] en {method} {url}: {resp.text[:200]}")
+            resp.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR CONEXION] en {method} {url}: {e}")
         raise
 
 
@@ -79,12 +72,11 @@ def esperar_servidor(max_intentos=60, intervalo=5):
     print(f"Esperando disponibilidad de OpenMetadata Server en {OM_SERVER_URL}...")
     for i in range(1, max_intentos + 1):
         try:
-            req = urllib.request.Request(f"{OM_SERVER_URL}/system/version", method="GET")
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                if resp.status == 200:
-                    data = json.loads(resp.read().decode("utf-8"))
-                    print(f"OpenMetadata Server activo. Version detectada: {data.get('version', '2.0.x')}")
-                    return True
+            r = requests.get(f"{OM_SERVER_URL}/system/version", timeout=5)
+            if r.status_code == 200:
+                data = r.json()
+                print(f"OpenMetadata Server activo. Version detectada: {data.get('version', '2.0.x')}")
+                return True
         except Exception:
             pass
         print(f"Intento {i}/{max_intentos}: Servidor aun inicializando... reintentando en {intervalo}s")
